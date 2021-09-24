@@ -1,2 +1,2 @@
 # LPyPL
-Project of the subject LPyPL which aims to create a compiler for the language minusC.
+Compiler made for the programming language minusC for the subjet LPyPL from the Polytechnic University Of Valencia.
