@@ -1,6 +1,10 @@
 # Prerequisites
 *.d
 
+#Ignore folder for Fuzzy CLIPS
+./source
+./fz_clips
+./fz_xclips
 # Object files
 *.o
 *.ko
