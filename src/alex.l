@@ -1,3 +1,8 @@
+/* ********************************************** 
+/* *************ANÁLISIS LÉXICO *****************
+/* ***********ELIAS URIOS ALACREU****************
+/* **********************************************
+
 %{
 #include <stdio.h>
 #include <string.h>
@@ -5,7 +10,10 @@
 
 #define  retornar(x) {if (verbosidad) ECHO; }
 %}
-
+/* ********************************************** 
+/* *************ANÁLISIS LÉXICO *****************
+/* ***********ELIAS URIOS ALACREU****************
+/* **********************************************
 %option noinput
 %option nounput
 %option yylineno
@@ -18,7 +26,6 @@ minus           [a-z]
 id              [a-z][A-Za-z0-9\-]*
 %%
 {entero}        {retornar(CTE_)}
-{id}            {retornar(ID_)}
 {delimitador}   {if(verbosidad) ECHO;}
 "while"         {retornar(IGU_)}
 "int"           {retornar(INT_)}
@@ -35,6 +42,7 @@ id              [a-z][A-Za-z0-9\-]*
 "/"             {retornar(DIV_)}
 "("             {retornar(APAR_)}
 ")"             {retornar(CPAR_)}
+{id}            {retornar(ID_)}
 .               {yyerror("Caracter desconocido");}
 %%
 
