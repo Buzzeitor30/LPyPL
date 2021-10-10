@@ -15,11 +15,20 @@ digito          [0-9]
 entero          {digito}+
 mayus           [A-Z]
 minus           [a-z]
-id              {minus}[{mayus}a-z0-9\-]*
+id              [a-z][A-Za-z0-9\-]*
 %%
 {entero}        {retornar(CTE_)}
 {id}            {retornar(ID_)}
 {delimitador}   {if(verbosidad) ECHO;}
+"while"         {retornar(IGU_)}
+"int"           {retornar(INT_)}
+"bool"          {retornar(BOOL_)}
+"struct"        {retornar(STRUC_)}
+"return"        {retornar(RETURN_)}
+"read"          {retornar(READ_)}
+"print"         {retornar(PRINT_)}
+"if"            {retornar(IF_)}
+"else"          {retornar(ELSE_)}
 "+"             {retornar(MAS_)}
 "-"             {retornar(MENOS_)}
 "*"             {retornar(POR_)}
