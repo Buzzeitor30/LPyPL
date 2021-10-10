@@ -1,4 +1,4 @@
-// Ejemplo de manipulacion de registros 
+// Ejemplo de manipulacion de registros
 //-------------------------------------
 int main()
 {

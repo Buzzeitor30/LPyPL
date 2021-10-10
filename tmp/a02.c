@@ -1,4 +1,4 @@
-// Ejemplo de manipulacion de vectores 
+// Ejemplo de manipulacion de vectores
 //------------------------------------
 int a[10];
 

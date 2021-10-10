@@ -1,7 +1,7 @@
 /* ********************************************** 
-/* *************ANÁLISIS LÉXICO *****************
-/* ***********ELIAS URIOS ALACREU****************
-/* **********************************************
+   *************ANÁLISIS LÉXICO *****************
+   ***********ELIAS URIOS ALACREU****************
+   ********************************************** */
 
 %{
 #include <stdio.h>
@@ -11,9 +11,9 @@
 #define  retornar(x) {if (verbosidad) ECHO; }
 %}
 /* ********************************************** 
-/* *************ANÁLISIS LÉXICO *****************
-/* ***********ELIAS URIOS ALACREU****************
-/* **********************************************
+   *************ANÁLISIS LÉXICO *****************
+   ***********ELIAS URIOS ALACREU****************
+   ********************************************** */
 %option noinput
 %option nounput
 %option yylineno
@@ -27,6 +27,7 @@ id              [a-z][A-Za-z0-9\-]*
 %%
 {entero}        {retornar(CTE_)}
 {delimitador}   {if(verbosidad) ECHO;}
+";"             {retornar(FINL_)}
 "while"         {retornar(IGU_)}
 "int"           {retornar(INT_)}
 "bool"          {retornar(BOOL_)}
@@ -36,12 +37,26 @@ id              [a-z][A-Za-z0-9\-]*
 "print"         {retornar(PRINT_)}
 "if"            {retornar(IF_)}
 "else"          {retornar(ELSE_)}
+"["             {retornar(AIND_)}
+"]"             {retornar(CIND_)}
+"("             {retornar(APAR_)}
+")"             {retornar(CPAR_)}
+"{"             {retornar(ABLOQ_)}
+"}"             {retornar(CBLOQ_)}
+"=="            {retornar(IGU_)}
+"!="            {retornar(DIST_)}
+"&&"            {retornar(AND_)}
+"||"            {retornar(OR_)}
+">"             {retornar(MAY_)}
+"<"             {retornar(MEN_)}
+">="            {retornar(MAYIGU_)}
+"<="            {retornar(MENORIGU_)}
+"="             {retornar(ASIG_)}
 "+"             {retornar(MAS_)}
 "-"             {retornar(MENOS_)}
 "*"             {retornar(POR_)}
 "/"             {retornar(DIV_)}
-"("             {retornar(APAR_)}
-")"             {retornar(CPAR_)}
+"!"             {retornar(NOT_)}
 {id}            {retornar(ID_)}
 .               {yyerror("Caracter desconocido");}
 %%
