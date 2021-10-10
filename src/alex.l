@@ -20,13 +20,15 @@
 
 delimitador     [ \t\n]+
 digito          [0-9]
+comentario	"//".*\n
 entero          {digito}+
-mayus           [A-Z]
-minus           [a-z]
 id              [a-z][A-Za-z0-9\-]*
 %%
 {entero}        {retornar(CTE_)}
 {delimitador}   {if(verbosidad) ECHO;}
+{comentario}	{retornar(COMENT_)}
+"."		{retornar(PROP_)}
+","		{retornar(COMA_)}
 ";"             {retornar(FINL_)}
 "while"         {retornar(IGU_)}
 "int"           {retornar(INT_)}
