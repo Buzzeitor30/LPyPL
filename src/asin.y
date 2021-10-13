@@ -10,16 +10,23 @@
 
 extern int yylineno;
 %}
-%define parse.error verbose
-%token CTE_ PUNT_ COMA_ FINL_
-%token WHILE_ INT_ BOOL_ STRUC_ RETURN_
-%token READ_ PRINT_ IF_ ELSE_ AIND_ CIND_
-%token APAR_ CPAR_ ABLOQ_ CBLOQ_ IGU_ DIST_
-%token AND_ OR_ MAY_ MEN_ MAYIGU_ MENORIGU_
-%token ASIG_ MAS_ MENOS_ POR_ DIV_ NOT_ ID_
+
+/*PUNTO, COMA Y PUNTO Y COMA */
+%token PUNT_ COMA_ FINL_
+/* PALABRAS RESERVADAS */
+%token WHILE_ INT_ BOOL_ STRUC_ RETURN_ READ_ PRINT_ IF_ ELSE_
+/* INDICES, BLOQUES Y PARENTESIS*/
+%token APAR_ CPAR_ ABLOQ_ CBLOQ_ AIND_ CIND_
+/* OPERADORES LÓGICOS */
+%token IGU_ DIST_ AND_ OR_ MAY_ MEN_ MAYIGU_ MENORIGU_ NOT_
+/* ASIGNACION Y OPERADORES ARITMÉTICOS */
+%token ASIG_ MAS_ MENOS_ POR_ DIV_
+/*CONSTANTE E IDENTIFICADOR*/
+%token ID_ CTE_
+/* TRUE AND FALSE */
 %token TRUE_ FALSE_
 
-
+/* GRAMATICA COPIADA DIRECTAMENTE DEL BOLETÍN */
 %%
 
 programa : listaDeclaraciones
@@ -160,30 +167,3 @@ operadorUnario : MAS_
                | NOT_
 
 %%
-
-int verbosidad = FALSE;
-
-void yyerror(const char *msg) {
-    fprintf(stderr, "Error en la linea %d: %s\n", yylineno, msg);
-}
-
-int main(int argc, char **argv) {
-    int i, n=1;
-
-    for(i=1; i < argc; ++i) {
-        if(strcmp(argv[i], "-v") == 0) {
-            verbosidad = TRUE;
-            n++;
-        }
-    }
-    if(argc == n+1) {
-        if((yyin = fopen(argv[n], "r")) == NULL) {
-            fprintf(stderr, "El fichero '%s' no es válido\n", argv[n]);
-        }else {
-            yyparse();
-        }
-    } else {
-        fprintf(stderr, "Uso: cmc [-v] fichero\n");
-    }
-    return(0);
-}
