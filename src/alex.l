@@ -23,7 +23,9 @@ digito          [0-9]
 comentario      "//".*\n
 /*Varios digitos constituye un entero*/
 entero          {digito}+
-id              [a-z][A-Za-z0-9\-]*
+real            {digito}*"."{digito}+
+constante       {entero}|{real}
+id              [A-Za-z][A-Za-z0-9\-]*
 
 
 %%
@@ -38,10 +40,6 @@ id              [a-z][A-Za-z0-9\-]*
 "print"         {retornar(PRINT_)}
 "if"            {retornar(IF_)}
 "else"          {retornar(ELSE_)}
-{id}            {retornar(ID_)}
-{entero}        {retornar(CTE_)}
-{delimitador}   {if(verbosidad) ECHO;}
-{comentario}    {if(verbosidad) ECHO;}
 "."             {retornar(PUNT_)}
 ","             {retornar(COMA_)}
 ";"             {retornar(FINL_)}
@@ -65,5 +63,9 @@ id              [a-z][A-Za-z0-9\-]*
 "*"             {retornar(POR_)}
 "/"             {retornar(DIV_)}
 "!"             {retornar(NOT_)}
+{id}            {retornar(ID_)}
+{constante}     {retornar(CTE_)}
+{delimitador}   {if(verbosidad) ECHO;}
+{comentario}    {if(verbosidad) ECHO;}
 .               {yyerror("Caracter desconocido");}
 %%
