@@ -17,7 +17,7 @@
 /* Guardar numero de linea */
 %option yylineno
 
-delimitador     [ \t\n]+
+delimitador     [ \t]+
 digito          [0-9]
 /*Los comentarios comienzan con //, tienen lo que sea y acaban con salto de línea */
 comentario      "//".*\n
@@ -44,6 +44,7 @@ id              [A-Za-z][A-Za-z0-9\-]*
 "print"         {retornar(PRINT_)}
 "if"            {retornar(IF_)}
 "else"          {retornar(ELSE_)}
+"\n"            {if(verbosidad) {ECHO;fprintf(stdout,"%3d.- ", yylineno);}}
 
 "."             {retornar(PUNT_)}
 ","             {retornar(COMA_)}
@@ -74,6 +75,7 @@ id              [A-Za-z][A-Za-z0-9\-]*
 {constante}     {retornar(CTE_)}
 
 {delimitador}   {if(verbosidad) ECHO;}
-{comentario}    {if(verbosidad) ECHO;}
+{comentario}    {if(verbosidad) {ECHO;fprintf(stdout,"%3d.- ", yylineno);}}
 .               {yyerror("Caracter desconocido");}
+<<EOF>>         if(verbosidad) {fprintf(stdout,"\n"); return 0;}
 %%
