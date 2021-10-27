@@ -24,7 +24,7 @@ comentario      "//".*\n
 /*Un entero son 1 o más digitos, y un real tiene 0..* digitos a la izquierda del
 "." y luego tiene 1 o más dígitos */
 entero          {digito}+
-real            {digito}*"."{digito}+| {digito}+"."{digito}*
+real            {digito}*"."{digito}+|{digito}+"."{digito}*
 /*Una constante es o un entero o un real */
 constante       {entero}|{real}
 /*Los identificadores pueden empezar por mayusucula o minuscula, y luego pueden venir digitos, letras
