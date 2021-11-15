@@ -21,8 +21,7 @@ delimitador     [ \t]+
 digito          [0-9]
 /*Los comentarios comienzan con //, tienen lo que sea y acaban con salto de línea */
 comentario      "//".*\n
-/*Un entero son 1 o más digitos, y un real tiene 0..* digitos a la izquierda del
-"." y luego tiene 1 o más dígitos */
+/*Un entero son 1 o más digitos y un real puede ser 1.24 OR .24 OR 1.  */
 entero          {digito}+
 real            {digito}*"."{digito}+|{digito}+"."{digito}*
 /*Una constante es o un entero o un real */
@@ -77,5 +76,5 @@ id              [A-Za-z][A-Za-z0-9\-]*
 {delimitador}   {if(verbosidad) ECHO;}
 {comentario}    {if(verbosidad) {ECHO;fprintf(stdout,"%3d.- ", yylineno);}}
 .               {yyerror("Caracter desconocido");}
-<<EOF>>         if(verbosidad) {fprintf(stdout,"\n"); return 0;}
+<<EOF>>         {if(verbosidad){fprintf(stdout,"\n");} return 0;}
 %%
