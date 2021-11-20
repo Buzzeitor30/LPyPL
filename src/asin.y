@@ -11,10 +11,15 @@
 extern int yylineno;
 %}
 
+%union{
+   char *ident; /* Nombre del id. */
+   int cent; /* Valor de la cte. numérica */
+}
+
 /*PUNTO, COMA Y PUNTO Y COMA */
 %token PUNT_ COMA_ FINL_
 /* PALABRAS RESERVADAS */
-%token WHILE_ INT_ BOOL_ STRUC_ RETURN_ READ_ PRINT_ IF_ ELSE_
+%token WHILE_ BOOL_ STRUC_ RETURN_ READ_ PRINT_ IF_ ELSE_
 /* INDICES, BLOQUES Y PARENTESIS*/
 %token APAR_ CPAR_ ABLOQ_ CBLOQ_ AIND_ CIND_
 /* OPERADORES LÓGICOS */
@@ -23,8 +28,9 @@ extern int yylineno;
 %token ASIG_ MAS_ MENOS_ POR_ DIV_
 /*CONSTANTE E IDENTIFICADOR*/
 %token ID_ CTE_
-/* TRUE AND FALSE */
-%token TRUE_ FALSE_
+/* TIPOS SIMPLES*/
+%token  INT_ TRUE_ FALSE_
+%type <cent> tipoSimple
 
 /* GRAMATICA COPIADA DIRECTAMENTE DEL BOLETÍN */
 %%
@@ -41,15 +47,40 @@ declaracion : declaracionVariable
             ;
 
 declaracionVariable : tipoSimple ID_ FINL_ 
-                    | tipoSimple ID_ AIND_ CTE_ CIND_ FINL_
-                    | STRUC_ ABLOQ_ listaCampos CBLOQ_ ID_ FINL_
-                    ;
+{
+/*Insertar variable con el tipo, si todo OK incrementar dvar */
+if (!insTds($2, VARIABLE, $1, niv,dvar,-1))
+   yyerror("Identificador repetido"); 
+else dvar += TALLA_TIPO_SIMPLE;
+}
 
-tipoSimple : INT_ 
-           | BOOL_
+| tipoSimple ID_ AIND_ CTE_ CIND_ FINL_ {
+   int numelem = $4; /*Array length */
+   if(numelem <= 0) {
+      yyerror("Talla inapropiada del array");
+      numelem = 0;
+   }
+   int refe = insTdA($1, numelem); /*Referencia en tabla de arrays */
+   /*Insertar en tabla de simbolos e incrementar desplazamiento relativo si OK */
+   if(!insTds($2, VARIABLE, T_ARRAY, niv, dvar, refe))
+      yerrror("Identificador repetido");
+   else dvar += numelem * TALLA_TIPO_SIMPLE;
+}
+
+| STRUC_ ABLOQ_ listaCampos CBLOQ_ ID_ FINL_ {
+   if(!insTds($2, VARIABLE, T_RECORD, niv, dvar, $3)) {
+      yyerror("Identificador repetido");
+   } /* Meter un else donde se incrementa el dvar en función de la listaCampos */
+};
+
+tipoSimple : INT_ {$<cent>$ = TIPO_ENTERO;}
+           | BOOL_ {$<cent>$ = T_LOGICO;}
            ;
 
-listaCampos : tipoSimple ID_ FINL_
+listaCampos : 
+tipoSimple ID_ FINL_ {
+   if(! insTdR(-1, $2, $1, ))
+}
             | listaCampos tipoSimple ID_ FINL_
             ;
 
