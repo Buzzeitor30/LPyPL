@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "header.h"
-
+#include "libtds.h"
 extern int yylineno;
 %}
 
@@ -16,6 +16,9 @@ extern int yylineno;
    int cent; /* Valor de la cte. numérica */
 }
 
+/*CONSTANTE E IDENTIFICADOR*/
+%token <ident> ID_
+%token <cent> CTE_
 /*PUNTO, COMA Y PUNTO Y COMA */
 %token PUNT_ COMA_ FINL_
 /* PALABRAS RESERVADAS */
@@ -26,10 +29,9 @@ extern int yylineno;
 %token IGU_ DIST_ AND_ OR_ MAY_ MEN_ MAYIGU_ MENORIGU_ NOT_
 /* ASIGNACION Y OPERADORES ARITMÉTICOS */
 %token ASIG_ MAS_ MENOS_ POR_ DIV_
-/*CONSTANTE E IDENTIFICADOR*/
-%token ID_ CTE_
 /* TIPOS SIMPLES*/
-%token  INT_ TRUE_ FALSE_
+%token  <cent> INT_ TRUE_ FALSE_
+%type <cent> listaCampos
 %type <cent> tipoSimple
 
 /* GRAMATICA COPIADA DIRECTAMENTE DEL BOLETÍN */
@@ -49,7 +51,7 @@ declaracion : declaracionVariable
 declaracionVariable : tipoSimple ID_ FINL_ 
 {
 /*Insertar variable con el tipo, si todo OK incrementar dvar */
-if (!insTds($2, VARIABLE, $1, niv,dvar,-1))
+if (!insTdS($2, VARIABLE, $1, niv,dvar,-1))
    yyerror("Identificador repetido"); 
 else dvar += TALLA_TIPO_SIMPLE;
 }
@@ -62,27 +64,30 @@ else dvar += TALLA_TIPO_SIMPLE;
    }
    int refe = insTdA($1, numelem); /*Referencia en tabla de arrays */
    /*Insertar en tabla de simbolos e incrementar desplazamiento relativo si OK */
-   if(!insTds($2, VARIABLE, T_ARRAY, niv, dvar, refe))
-      yerrror("Identificador repetido");
+   if(!insTdS($2, VARIABLE, T_ARRAY, niv, dvar, refe))
+      yyerror("Identificador repetido");
    else dvar += numelem * TALLA_TIPO_SIMPLE;
 }
 
 | STRUC_ ABLOQ_ listaCampos CBLOQ_ ID_ FINL_ {
-   if(!insTds($2, VARIABLE, T_RECORD, niv, dvar, $3)) {
+   if(!insTdS($5, VARIABLE, T_RECORD, niv, dvar, $3)) {
       yyerror("Identificador repetido");
    } /* Meter un else donde se incrementa el dvar en función de la listaCampos */
 };
 
-tipoSimple : INT_ {$<cent>$ = TIPO_ENTERO;}
+tipoSimple : INT_ {$<cent>$ = T_ENTERO;}
            | BOOL_ {$<cent>$ = T_LOGICO;}
            ;
 
 listaCampos : 
 tipoSimple ID_ FINL_ {
-   if(! insTdR(-1, $2, $1, ))
+   $$ = insTdR(-1, $2, $1, 0);
+   if($$ == -1)
+      yyerror("Campo ya existente en el registro");
 }
-            | listaCampos tipoSimple ID_ FINL_
-            ;
+| 
+listaCampos tipoSimple ID_ FINL_ 
+;
 
 declaracionFuncion : tipoSimple ID_ APAR_ parametrosFormales CPAR_ bloque
                    ;

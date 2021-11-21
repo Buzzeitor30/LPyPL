@@ -1,4 +1,4 @@
-/* A Bison parser, made by GNU Bison 3.8.1.  */
+/* A Bison parser, made by GNU Bison 3.8.2.  */
 
 /* Bison interface for Yacc-like parsers in C
 
@@ -54,40 +54,40 @@ extern int yydebug;
     YYEOF = 0,                     /* "end of file"  */
     YYerror = 256,                 /* error  */
     YYUNDEF = 257,                 /* "invalid token"  */
-    PUNT_ = 258,                   /* PUNT_  */
-    COMA_ = 259,                   /* COMA_  */
-    FINL_ = 260,                   /* FINL_  */
-    WHILE_ = 261,                  /* WHILE_  */
-    INT_ = 262,                    /* INT_  */
-    BOOL_ = 263,                   /* BOOL_  */
-    STRUC_ = 264,                  /* STRUC_  */
-    RETURN_ = 265,                 /* RETURN_  */
-    READ_ = 266,                   /* READ_  */
-    PRINT_ = 267,                  /* PRINT_  */
-    IF_ = 268,                     /* IF_  */
-    ELSE_ = 269,                   /* ELSE_  */
-    APAR_ = 270,                   /* APAR_  */
-    CPAR_ = 271,                   /* CPAR_  */
-    ABLOQ_ = 272,                  /* ABLOQ_  */
-    CBLOQ_ = 273,                  /* CBLOQ_  */
-    AIND_ = 274,                   /* AIND_  */
-    CIND_ = 275,                   /* CIND_  */
-    IGU_ = 276,                    /* IGU_  */
-    DIST_ = 277,                   /* DIST_  */
-    AND_ = 278,                    /* AND_  */
-    OR_ = 279,                     /* OR_  */
-    MAY_ = 280,                    /* MAY_  */
-    MEN_ = 281,                    /* MEN_  */
-    MAYIGU_ = 282,                 /* MAYIGU_  */
-    MENORIGU_ = 283,               /* MENORIGU_  */
-    NOT_ = 284,                    /* NOT_  */
-    ASIG_ = 285,                   /* ASIG_  */
-    MAS_ = 286,                    /* MAS_  */
-    MENOS_ = 287,                  /* MENOS_  */
-    POR_ = 288,                    /* POR_  */
-    DIV_ = 289,                    /* DIV_  */
-    ID_ = 290,                     /* ID_  */
-    CTE_ = 291,                    /* CTE_  */
+    ID_ = 258,                     /* ID_  */
+    CTE_ = 259,                    /* CTE_  */
+    PUNT_ = 260,                   /* PUNT_  */
+    COMA_ = 261,                   /* COMA_  */
+    FINL_ = 262,                   /* FINL_  */
+    WHILE_ = 263,                  /* WHILE_  */
+    BOOL_ = 264,                   /* BOOL_  */
+    STRUC_ = 265,                  /* STRUC_  */
+    RETURN_ = 266,                 /* RETURN_  */
+    READ_ = 267,                   /* READ_  */
+    PRINT_ = 268,                  /* PRINT_  */
+    IF_ = 269,                     /* IF_  */
+    ELSE_ = 270,                   /* ELSE_  */
+    APAR_ = 271,                   /* APAR_  */
+    CPAR_ = 272,                   /* CPAR_  */
+    ABLOQ_ = 273,                  /* ABLOQ_  */
+    CBLOQ_ = 274,                  /* CBLOQ_  */
+    AIND_ = 275,                   /* AIND_  */
+    CIND_ = 276,                   /* CIND_  */
+    IGU_ = 277,                    /* IGU_  */
+    DIST_ = 278,                   /* DIST_  */
+    AND_ = 279,                    /* AND_  */
+    OR_ = 280,                     /* OR_  */
+    MAY_ = 281,                    /* MAY_  */
+    MEN_ = 282,                    /* MEN_  */
+    MAYIGU_ = 283,                 /* MAYIGU_  */
+    MENORIGU_ = 284,               /* MENORIGU_  */
+    NOT_ = 285,                    /* NOT_  */
+    ASIG_ = 286,                   /* ASIG_  */
+    MAS_ = 287,                    /* MAS_  */
+    MENOS_ = 288,                  /* MENOS_  */
+    POR_ = 289,                    /* POR_  */
+    DIV_ = 290,                    /* DIV_  */
+    INT_ = 291,                    /* INT_  */
     TRUE_ = 292,                   /* TRUE_  */
     FALSE_ = 293                   /* FALSE_  */
   };
@@ -96,7 +96,17 @@ extern int yydebug;
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
-typedef int YYSTYPE;
+union YYSTYPE
+{
+#line 14 "src/asin.y"
+
+   char *ident; /* Nombre del id. */
+   int cent; /* Valor de la cte. numérica */
+
+#line 107 "asin.h"
+
+};
+typedef union YYSTYPE YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define YYSTYPE_IS_DECLARED 1
 #endif
