@@ -9,11 +9,16 @@
 #include "header.h"
 #include "libtds.h"
 extern int yylineno;
+
 %}
 
 %union{
    char *ident; /* Nombre del id. */
    int cent; /* Valor de la cte. numérica */
+   struct {
+      int refe;
+      int desp_r;
+   } CampoRegistro;
 }
 
 /*CONSTANTE E IDENTIFICADOR*/
@@ -25,14 +30,14 @@ extern int yylineno;
 %token WHILE_ BOOL_ STRUC_ RETURN_ READ_ PRINT_ IF_ ELSE_
 /* INDICES, BLOQUES Y PARENTESIS*/
 %token APAR_ CPAR_ ABLOQ_ CBLOQ_ AIND_ CIND_
-/* OPERADORES LÓGICOS */
+/* OPERADORES LÓGICOS*/
 %token IGU_ DIST_ AND_ OR_ MAY_ MEN_ MAYIGU_ MENORIGU_ NOT_
 /* ASIGNACION Y OPERADORES ARITMÉTICOS */
 %token ASIG_ MAS_ MENOS_ POR_ DIV_
 /* TIPOS SIMPLES*/
-%token  <cent> INT_ TRUE_ FALSE_
-%type <cent> listaCampos
-%type <cent> tipoSimple
+%token  INT_ TRUE_ FALSE_
+%type <CampoRegistro> listaCampos
+%type <cent> tipoSimple parametrosFormales instruccionAsignacion constante expresion
 
 /* GRAMATICA COPIADA DIRECTAMENTE DEL BOLETÍN */
 %%
@@ -48,12 +53,13 @@ declaracion : declaracionVariable
             | declaracionFuncion
             ;
 
+/** HECHO **/
 declaracionVariable : tipoSimple ID_ FINL_ 
 {
 /*Insertar variable con el tipo, si todo OK incrementar dvar */
 if (!insTdS($2, VARIABLE, $1, niv,dvar,-1))
    yyerror("Identificador repetido"); 
-else dvar += TALLA_TIPO_SIMPLE;
+else dvar += TALLA_TIPO_SIMPLE; 
 }
 
 | tipoSimple ID_ AIND_ CTE_ CIND_ FINL_ {
@@ -66,47 +72,77 @@ else dvar += TALLA_TIPO_SIMPLE;
    /*Insertar en tabla de simbolos e incrementar desplazamiento relativo si OK */
    if(!insTdS($2, VARIABLE, T_ARRAY, niv, dvar, refe))
       yyerror("Identificador repetido");
-   else dvar += numelem * TALLA_TIPO_SIMPLE;
+   else dvar += numelem * TALLA_TIPO_SIMPLE; 
 }
-
 | STRUC_ ABLOQ_ listaCampos CBLOQ_ ID_ FINL_ {
-   if(!insTdS($5, VARIABLE, T_RECORD, niv, dvar, $3)) {
+   if(!insTdS($5, VARIABLE, T_RECORD, niv, dvar, $<CampoRegistro.refe>3)) {
       yyerror("Identificador repetido");
    } /* Meter un else donde se incrementa el dvar en función de la listaCampos */
 };
 
-tipoSimple : INT_ {$<cent>$ = T_ENTERO;}
-           | BOOL_ {$<cent>$ = T_LOGICO;}
+/* HECHO */
+tipoSimple : INT_ {$$ = T_ENTERO;}
+           | BOOL_ {$$ = T_LOGICO;}
            ;
 
+/* HECHO */
 listaCampos : 
 tipoSimple ID_ FINL_ {
-   $$ = insTdR(-1, $2, $1, 0);
-   if($$ == -1)
+   int refe = insTdR(-1, $2, $1, 0);
+   if(refe == -1)
       yyerror("Campo ya existente en el registro");
+   else {
+      $<CampoRegistro.refe>$ = refe;
+      $<CampoRegistro.desp_r>$ = TALLA_TIPO_SIMPLE; /*TALLA_TIPO_SIMPLE */
+   };
 }
 | 
-listaCampos tipoSimple ID_ FINL_ 
+listaCampos tipoSimple ID_ FINL_ {
+   int desp = $<CampoRegistro.desp_r>1;
+   $<CampoRegistro.refe>$ = $<CampoRegistro.refe>1;
+   if (insTdR($<CampoRegistro.refe>1,$3, $2, desp) == -1)
+      yyerror("Campo ya existente en el registro");
+   else {
+      $<CampoRegistro.desp_r>$ = desp + TALLA_TIPO_SIMPLE; /* TALLA_TIPO_SIMPLE */
+   }
+}
 ;
-
-declaracionFuncion : tipoSimple ID_ APAR_ parametrosFormales CPAR_ bloque
+/* TODO */
+                     /* nivel para variables locales                                                  descargamos contexto y reestablecemos nivel*/ 
+declaracionFuncion :  {niv=1;cargaContexto(1);} tipoSimple ID_ APAR_ parametrosFormales CPAR_ bloque {descargaContexto(niv);niv=0;} {
+                           if(!insTdS($3, FUNCION, $2, 0, dvar, $5))
+                              yyerror("La función ya ha sido declarada de forma previa");
+                     }
                    ;
 
-parametrosFormales :  | listaParametrosFormales
+/* TODO */
+parametrosFormales : {$$ = insTdD(-1, T_VACIO);}  
+                   | listaParametrosFormales {$$ = $1} /* TODO AHORITA */
                    ;
 
-listaParametrosFormales : tipoSimple ID_ 
+/*TODO */
+listaParametrosFormales : tipoSimple ID_ {
+                           int refe = insTdD(-1, $1);
+                        }
                         | tipoSimple ID_ COMA_ listaParametrosFormales
                         ;
 
 bloque : ABLOQ_ declaracionVariableLocal listaInstrucciones 
-         RETURN_ expresion FINL_ CBLOQ_
+         RETURN_ expresion FINL_ CBLOQ_ {
+            INF func = obtTdD(-1); /* Sacamos la info la de funcion actual */
+            /* Los tipos que tienen que devolver coinciden */
+            if (inf.tipo != $5) {
+               yyerror("El valor de retorno no coincide con el de la declaración de la funcion");
+            }
+         }
 
-declaracionVariableLocal :  
+/* HECHO, como niv=0 al declarar funcion, no hace falta ponerlo */
+declaracionVariableLocal :  /* epsilon */
                          | declaracionVariableLocal declaracionVariable
                          ;
 
-listaInstrucciones :  | listaInstrucciones instruccion 
+listaInstrucciones :  /* epsilon */
+                   | listaInstrucciones instruccion 
                    ;
 
 instruccion : ABLOQ_ listaInstrucciones CBLOQ_ 
@@ -116,8 +152,26 @@ instruccion : ABLOQ_ listaInstrucciones CBLOQ_
             | instruccionIteracion
             ;
 
-instruccionAsignacion : ID_ ASIG_ expresion FINL_
-                      | ID_ AIND_ expresion CIND_ ASIG_ expresion FINL_
+instruccionAsignacion : ID_ ASIG_ expresion FINL_ {
+                        SIMB sym = obTdS($1); /*sacamos la estructura con el nombre de la variable */
+                        if(sym.t == T_ERROR) {
+                           yyerror("La variable no está declarada");
+                        } else if(sym.t != $3)
+                           yyerror("Error en la asignacion");
+                     }
+                      | ID_ AIND_ expresion CIND_ ASIG_ expresion FINL_ {
+                         SIMB sym = obTdS($1);
+                         DIM dim = obtTdA($1);
+                         if(sym.t == T_ERROR) {
+                            yyerror("La variable no está declarada");
+                         } else if(sym.t != T_ARRAY) {
+                            yyerror("La variable no es un array");
+                         } else if($3 != T_ENTERO) {
+                            yyerror("El índice del array tiene que ser un numero entero");
+                         } else if($6 != dim.t) {
+                            yyerror("Error en la asignacion");
+                         }
+                      }
                       | ID_ PUNT_ ID_ ASIG_ expresion FINL_
                       ;
 
@@ -131,8 +185,11 @@ instruccionSeleccion : IF_ APAR_ expresion CPAR_ instruccion ELSE_ instruccion
 instruccionIteracion : WHILE_ APAR_ expresion CPAR_ instruccion
                      ;
 
-expresion : expresionIgualdad 
-          | expresion operadorLogico expresionIgualdad
+expresion : expresionIgualdad {$$ = $1;}
+          | expresion operadorLogico expresionIgualdad{
+              if($1 != $3 && $3 )
+                yyerror()
+          }
           ;
 
 expresionIgualdad : expresionRelacional
@@ -163,9 +220,9 @@ expresionSufija : constante
                 | ID_ APAR_ parametrosActuales CPAR_
                 ;
 
-constante : CTE_
-          | TRUE_
-          | FALSE_
+constante : CTE_ {$$ = T_ENTERO;}
+          | TRUE_ {$$ = T_LOGICO;}
+          | FALSE_ {$$ = T_LOGICO;}
           ;
 
 parametrosActuales :  
