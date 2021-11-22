@@ -221,8 +221,11 @@ instruccionIteracion : WHILE_ APAR_ expresion CPAR_ instruccion {
 
 expresion : expresionIgualdad {$$ = $1;}
           | expresion operadorLogico expresionIgualdad{
-              if($1 != $3 && $3 )
-                yyerror("");
+              /* Si uno de las dos expresiones no es de tipo logico tenemos un error */
+               if(!($1 == T_LOGICO && $1 == $3))
+                    $$ = T_ERROR;
+               else
+                    $$ = T_LOGICO;
           }
           ;
 
