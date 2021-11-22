@@ -117,7 +117,7 @@ declaracionFuncion :  {niv=1;cargaContexto(1);} tipoSimple ID_ APAR_ parametrosF
 
 /* TODO */
 parametrosFormales : {$$ = insTdD(-1, T_VACIO);}  
-                   | listaParametrosFormales {$$ = $1} /* TODO AHORITA */
+                   | listaParametrosFormales /* {$$ = $1}  TODO AHORITA */
                    ;
 
 /*TODO */
@@ -131,7 +131,7 @@ bloque : ABLOQ_ declaracionVariableLocal listaInstrucciones
          RETURN_ expresion FINL_ CBLOQ_ {
             INF func = obtTdD(-1); /* Sacamos la info la de funcion actual */
             /* Los tipos que tienen que devolver coinciden */
-            if (inf.tipo != $5) {
+            if (func.tipo != $5) {
                yyerror("El valor de retorno no coincide con el de la declaración de la funcion");
             }
          }
@@ -153,7 +153,7 @@ instruccion : ABLOQ_ listaInstrucciones CBLOQ_
             ;
 
 instruccionAsignacion : ID_ ASIG_ expresion FINL_ {
-                        SIMB sym = obTdS($1); /*sacamos la estructura con el nombre de la variable */
+                        SIMB sym = obtTdS($1); /*sacamos la estructura con el nombre de la variable */
                         if(sym.t == T_ERROR) {
                            yyerror("Objeto no declarado");
                         } else if(sym.t != $3)
@@ -161,11 +161,11 @@ instruccionAsignacion : ID_ ASIG_ expresion FINL_ {
                      }
                       | ID_ AIND_ expresion CIND_ ASIG_ expresion FINL_ {
                          /* Sacamos simbolo e informacion del array dado el simbolo */
-                         SIMB sym = obTdS($1);
-                         DIM dim = obtTdA($1);
+                         SIMB sym = obtTdS($1);
+                         DIM dim = obtTdA(sym.ref);
                          if(sym.t == T_ERROR) {
                             yyerror("Objeto no declarado");
-                         } else if($6 != dim.t) { /* La asignacion no coincide con el tipo del array */
+                         } else if($6 != dim.telem) { /* La asignacion no coincide con el tipo del array */
                             yyerror("Error de tipos en la \"asignacion\"");
                          } else if(sym.t != T_ARRAY) { /* Tenemos que tratar con un array */
                             yyerror("El identificador debe ser de tipo \"array\"");
@@ -174,23 +174,35 @@ instruccionAsignacion : ID_ ASIG_ expresion FINL_ {
                          } 
                       }
                       | ID_ PUNT_ ID_ ASIG_ expresion FINL_ {
-                        SIMB sym = obTdS($1); /* Sacamos la variable */
-                        CAMP cam = obTdR(sym.ref, $3);
+                        SIMB sym = obtTdS($1); /* Sacamos la variable */
+                        CAMP cam = obtTdR(sym.ref, $3);
                         if(sym.t == T_ERROR) { /* ¿Variable declarada?*/
                            yyerror("Objeto no declarado");
                         } else if(sym.t != T_RECORD) { /* ¿Estructura? */
-                           yyeror("El identificador debe ser \"struct\"");
+                           yyerror("El identificador debe ser \"struct\"");
                         } else if(cam.t == T_ERROR){
                            yyerror("Campo no declarado");
                         } else if(cam.t != $5){
-                           yyerror("Error de tipos en la \"asignacion\"")
+                           yyerror("Error de tipos en la \"asignacion\"");
                         }
                       }
                         
                       ;
 
-instruccionEntradaSalida : READ_ APAR_ ID_ CPAR_ FINL_ 
-                         | PRINT_ APAR_ expresion CPAR_ FINL_
+/*HECHO */
+instruccionEntradaSalida : READ_ APAR_ ID_ CPAR_ FINL_ {
+                           SIMB sym = obtTdS($3);
+                           if(sym.t == T_ERROR) {
+                              yyerror("Objeto no declarado");
+                           } else if(sym.t != T_ENTERO) {
+                              yyerror("El argumento de \"read\" debe ser \"entero\"");
+                           }
+                        }
+                         | PRINT_ APAR_ expresion CPAR_ FINL_{
+                           if($3 != T_ENTERO) {
+                              yyerror("La expresion del \"print\" debe ser entera");
+                           }
+                         }
                          ;
 
 instruccionSeleccion : IF_ APAR_ expresion CPAR_ instruccion ELSE_ instruccion
@@ -202,11 +214,11 @@ instruccionIteracion : WHILE_ APAR_ expresion CPAR_ instruccion
 expresion : expresionIgualdad {$$ = $1;}
           | expresion operadorLogico expresionIgualdad{
               if($1 != $3 && $3 )
-                yyerror()
+                yyerror("");
           }
           ;
 
-expresionIgualdad : expresionRelacional {$$ = $1;}
+expresionIgualdad : expresionRelacional 
                   | expresionIgualdad operadorIgualdad expresionRelacional
                   ;
 
