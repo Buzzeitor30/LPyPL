@@ -205,10 +205,18 @@ instruccionEntradaSalida : READ_ APAR_ ID_ CPAR_ FINL_ {
                          }
                          ;
 
-instruccionSeleccion : IF_ APAR_ expresion CPAR_ instruccion ELSE_ instruccion
+/* HECHO */
+instruccionSeleccion : IF_ APAR_ expresion CPAR_ instruccion ELSE_ instruccion {
+                        if($3 != T_LOGICO) {
+                           yyerror("La expresion del \"if\" debe ser \"logico\"")
+                        }
+                     }
                      ;
 
-instruccionIteracion : WHILE_ APAR_ expresion CPAR_ instruccion
+instruccionIteracion : WHILE_ APAR_ expresion CPAR_ instruccion {
+                        if($3 != T_LOGICO)
+                           yyerror("La expresion del \"while\" debe ser \"logico\"");
+                     }
                      ;
 
 expresion : expresionIgualdad {$$ = $1;}
