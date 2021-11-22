@@ -37,7 +37,7 @@ extern int yylineno;
 /* TIPOS SIMPLES*/
 %token  INT_ TRUE_ FALSE_
 %type <CampoRegistro> listaCampos
-%type <cent> tipoSimple parametrosFormales instruccionAsignacion constante expresion
+%type <cent> tipoSimple parametrosFormales instruccionAsignacion constante expresion expresionIgualdad
 
 /* GRAMATICA COPIADA DIRECTAMENTE DEL BOLETÍN */
 %%
@@ -155,24 +155,38 @@ instruccion : ABLOQ_ listaInstrucciones CBLOQ_
 instruccionAsignacion : ID_ ASIG_ expresion FINL_ {
                         SIMB sym = obTdS($1); /*sacamos la estructura con el nombre de la variable */
                         if(sym.t == T_ERROR) {
-                           yyerror("La variable no está declarada");
+                           yyerror("Objeto no declarado");
                         } else if(sym.t != $3)
                            yyerror("Error en la asignacion");
                      }
                       | ID_ AIND_ expresion CIND_ ASIG_ expresion FINL_ {
+                         /* Sacamos simbolo e informacion del array dado el simbolo */
                          SIMB sym = obTdS($1);
                          DIM dim = obtTdA($1);
                          if(sym.t == T_ERROR) {
-                            yyerror("La variable no está declarada");
-                         } else if(sym.t != T_ARRAY) {
-                            yyerror("La variable no es un array");
-                         } else if($3 != T_ENTERO) {
-                            yyerror("El índice del array tiene que ser un numero entero");
-                         } else if($6 != dim.t) {
-                            yyerror("Error en la asignacion");
-                         }
+                            yyerror("Objeto no declarado");
+                         } else if($6 != dim.t) { /* La asignacion no coincide con el tipo del array */
+                            yyerror("Error de tipos en la \"asignacion\"");
+                         } else if(sym.t != T_ARRAY) { /* Tenemos que tratar con un array */
+                            yyerror("El identificador debe ser de tipo \"array\"");
+                         } else if($3 != T_ENTERO) { /* Se accede a los indicies con enteros */
+                            yyerror("El índice del \"array\" debe ser entero");
+                         } 
                       }
-                      | ID_ PUNT_ ID_ ASIG_ expresion FINL_
+                      | ID_ PUNT_ ID_ ASIG_ expresion FINL_ {
+                        SIMB sym = obTdS($1); /* Sacamos la variable */
+                        CAMP cam = obTdR(sym.ref, $3);
+                        if(sym.t == T_ERROR) { /* ¿Variable declarada?*/
+                           yyerror("Objeto no declarado");
+                        } else if(sym.t != T_RECORD) { /* ¿Estructura? */
+                           yyeror("El identificador debe ser \"struct\"");
+                        } else if(cam.t == T_ERROR){
+                           yyerror("Campo no declarado");
+                        } else if(cam.t != $5){
+                           yyerror("Error de tipos en la \"asignacion\"")
+                        }
+                      }
+                        
                       ;
 
 instruccionEntradaSalida : READ_ APAR_ ID_ CPAR_ FINL_ 
@@ -192,7 +206,7 @@ expresion : expresionIgualdad {$$ = $1;}
           }
           ;
 
-expresionIgualdad : expresionRelacional
+expresionIgualdad : expresionRelacional {$$ = $1;}
                   | expresionIgualdad operadorIgualdad expresionRelacional
                   ;
 
