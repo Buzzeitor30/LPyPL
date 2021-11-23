@@ -37,7 +37,7 @@ extern int yylineno;
 /* TIPOS SIMPLES*/
 %token  INT_ TRUE_ FALSE_
 %type <CampoRegistro> listaCampos
-%type <cent> tipoSimple parametrosFormales instruccionAsignacion constante expresion expresionIgualdad
+%type <cent> tipoSimple parametrosFormales instruccionAsignacion constante expresion expresionUnaria expresionIgualdad expresionRelacional expresionSufija expresionAditiva expresionMultiplicativa
 
 /* GRAMATICA COPIADA DIRECTAMENTE DEL BOLETÍN */
 %%
@@ -109,7 +109,7 @@ listaCampos tipoSimple ID_ FINL_ {
 ;
 /* TODO */
                      /* nivel para variables locales                                                  descargamos contexto y reestablecemos nivel*/ 
-declaracionFuncion :  {niv=1;cargaContexto(1);} tipoSimple ID_ APAR_ parametrosFormales CPAR_ bloque {descargaContexto(niv);niv=0;} {
+declaracionFuncion : tipoSimple {niv++;cargaContexto(niv);} ID_ APAR_ parametrosFormales CPAR_ bloque {descargaContexto(niv);niv--;} {
                            if(!insTdS($3, FUNCION, $2, 0, dvar, $5))
                               yyerror("La función ya ha sido declarada de forma previa");
                      }
@@ -206,55 +206,107 @@ instruccionEntradaSalida : READ_ APAR_ ID_ CPAR_ FINL_ {
                          ;
 
 /* HECHO */
-instruccionSeleccion : IF_ APAR_ expresion CPAR_ instruccion ELSE_ instruccion {
-                        if($3 != T_LOGICO) {
-                           yyerror("La expresion del \"if\" debe ser \"logico\"")
-                        }
-                     }
+instruccionSeleccion : IF_ APAR_ expresion {if($3 != T_LOGICO)yyerror("La expresion del \"if\" debe ser \"logico\"");} CPAR_ instruccion ELSE_ instruccion 
                      ;
-
-instruccionIteracion : WHILE_ APAR_ expresion CPAR_ instruccion {
-                        if($3 != T_LOGICO)
-                           yyerror("La expresion del \"while\" debe ser \"logico\"");
-                     }
+/* HECHO */ 
+instruccionIteracion : WHILE_ APAR_ expresion {if($3 != T_LOGICO)yyerror("La expresion del \"while\" debe ser \"logico\"")} CPAR_ instruccion
                      ;
 
 expresion : expresionIgualdad {$$ = $1;}
           | expresion operadorLogico expresionIgualdad{
               /* Si uno de las dos expresiones no es de tipo logico tenemos un error */
-               if(!($1 == T_LOGICO && $1 == $3))
+               if ($1 == T_ERROR || $3 == T_ERROR) 
+                   $$ = T_ERROR;
+               if(!($1 == T_LOGICO && $1 == $3)) {
                     $$ = T_ERROR;
+                    yyerror("Error en \"expresion logica\"");
+               }
                else
                     $$ = T_LOGICO;
           }
           ;
 
-expresionIgualdad : expresionRelacional 
-                  | expresionIgualdad operadorIgualdad expresionRelacional
+expresionIgualdad : expresionRelacional {$$ = $1;}
+                  | expresionIgualdad operadorIgualdad expresionRelacional {
+                     if($1 == T_ERROR || $3 == T_ERROR)
+                        $$ = T_ERROR;
+                     else if(!(($1 == T_LOGICO && $1 == $3) || ($1 == T_ENTERO && $1 == $3) )) {
+                        $$ = T_ERROR;
+                        yyerror("Error en \"expresion de igualdad\"");
+                     } else {
+                        $$ = T_LOGICO;
+                     }
+                  }
                   ;
 
-expresionRelacional : expresionAditiva
-                    | expresionRelacional operadorRelacional expresionAditiva
+expresionRelacional : expresionAditiva {$$ = $1;}
+                    | expresionRelacional operadorRelacional expresionAditiva {
+                        if($1 == T_ERROR || $3 == T_ERROR)
+                           $$ = T_ERROR;
+                        else if(!($1 == T_ENTERO || $1 == $3)) {
+                           $$ = T_ERROR;
+                           yyerror("Error en \"expresion relacional\"");
+                        } /*PREGUNTAR SI SE PUEDE HACER TRUE < FALSE */
+                        else {
+                           $$ = T_LOGICO;
+                        }
+                    }
                     ;
 
-expresionAditiva : expresionMultiplicativa 
-                 | expresionAditiva operadorAditivo expresionMultiplicativa
+expresionAditiva : expresionMultiplicativa  {$$ = $1;}
+                 | expresionAditiva operadorAditivo expresionMultiplicativa {
+                     if($1 == T_ERROR || $3 == T_ERROR)
+                        $$ = T_ERROR;
+                     else if(!($1 == T_ENTERO || $1 == $3)) {
+                        $$ = T_ERROR;
+                        yyerror("Error en \"expresion aditiva\"");
+                     } else {
+                        $$ = T_LOGICO;
+                     }
+                 }
                  ;
 
-expresionMultiplicativa : expresionUnaria 
-                        | expresionMultiplicativa operadorMultiplicativo expresionUnaria
+expresionMultiplicativa : expresionUnaria {$$ = $1;}
+                        | expresionMultiplicativa operadorMultiplicativo expresionUnaria {
+                           if($1 == T_ERROR || $3 == T_ERROR)
+                              $$ = T_ERROR;
+                           else if(!($1 == T_ENTERO && $1 == $3)) {
+                              $$ = T_ERROR;
+                              yyerror("Error en \"expresion multiplicativa\"");
+                           }
+                           else {
+                              $$ = T_ENTERO;
+                           }
+                        }
                         ;
 
-expresionUnaria : expresionSufija 
-                | operadorUnario expresionUnaria
+expresionUnaria : expresionSufija {$$ = $1;}
+                | operadorUnario expresionUnaria /* me da pereza */
                 ;
 
 expresionSufija : constante 
-                | APAR_ expresion CPAR_ 
-                | ID_
-                | ID_ PUNT_ ID_
-                | ID_ AIND_ expresion CIND_
-                | ID_ APAR_ parametrosActuales CPAR_
+                | APAR_ expresion CPAR_ {$$ = $2;}
+                | ID_ {
+                     SIMB sym = obtTdS($1);
+                     /* comprobar que existe la variable, como al declarar la variable normal ,
+                     si no existe (negad el IF) asignad tipo error, sino asignad sym.t*/
+                     $$ = sym.t;
+                }
+                | ID_ PUNT_ ID_ {
+                     SIMB sym = obtTdS($1);
+                     CAMP camp = obtTdR(sym.ref, $3);
+                     /*comprobar que es de tipo estructura y comprobar que existe el campo,
+                     ídem a lo anterior*/
+                     $$ = camp.t;
+                }
+                | ID_ AIND_ expresion CIND_ {
+                     SIMB sym = obtTds($1);
+                     /*comprobar que es de tipo array la variable y que expresion es de tipo entero, si lo son
+                     $$ = T_ELEMENTOS_ARRAY (mirar estructura CAMP) */
+                }
+                | ID_ APAR_ parametrosActuales CPAR_ {
+                     /* preguntar la profesor */
+                }
                 ;
 
 constante : CTE_ {$$ = T_ENTERO;}
