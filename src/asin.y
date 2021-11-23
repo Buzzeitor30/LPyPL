@@ -37,8 +37,10 @@ extern int yylineno;
 /* TIPOS SIMPLES*/
 %token  INT_ TRUE_ FALSE_
 %type <CampoRegistro> listaCampos
-%type <cent> tipoSimple parametrosFormales instruccionAsignacion constante expresion expresionUnaria expresionIgualdad expresionRelacional expresionSufija expresionAditiva expresionMultiplicativa
-
+%type <cent> tipoSimple parametrosFormales instruccionAsignacion constante
+/*--------EXPRESIONES-----------------------*/
+%type <cent> expresion expresionUnaria expresionIgualdad expresionRelacional 
+%type <cent> expresionSufija expresionAditiva expresionMultiplicativa
 /* GRAMATICA COPIADA DIRECTAMENTE DEL BOLETÍN */
 %%
 
@@ -281,7 +283,7 @@ expresionMultiplicativa : expresionUnaria {$$ = $1;}
                         ;
 
 expresionUnaria : expresionSufija {$$ = $1;}
-                | operadorUnario expresionUnaria /* me da pereza */
+                | operadorUnario expresionUnaria /* PREGUNTAR AL PROFESOR */ 
                 ;
 
 expresionSufija : constante 
@@ -290,19 +292,42 @@ expresionSufija : constante
                      SIMB sym = obtTdS($1);
                      /* comprobar que existe la variable, como al declarar la variable normal ,
                      si no existe (negad el IF) asignad tipo error, sino asignad sym.t*/
-                     $$ = sym.t;
+                     if(sym.t == T_ERROR)) {
+                        yyerror("Objeto no declarado");
+                        $$ = T_ERROR;
+                     }else
+                        $$ = sym.t;
                 }
                 | ID_ PUNT_ ID_ {
                      SIMB sym = obtTdS($1);
                      CAMP camp = obtTdR(sym.ref, $3);
-                     /*comprobar que es de tipo estructura y comprobar que existe el campo,
-                     ídem a lo anterior*/
-                     $$ = camp.t;
+                     /*¿ERROR?*/
+                     if(sym.t == T_ERROR) {
+                        yyerror("Objeto no declarado");
+                        $$ = T_ERROR;
+                     } else if(sym.t != T_RECORD) { /*¿Estructura*/
+                        yyerror("El identificador debe ser de tipo \"struct\"");
+                        $$ = T_ERROR;
+                     } else if (camp.t == T_ERROR) { /*¿Campo declarado?*/
+                        yyerror("Campo no declarado");
+                        $$ = T_ERROR;
+                     } else
+                        $$ = camp.t;
                 }
                 | ID_ AIND_ expresion CIND_ {
                      SIMB sym = obtTds($1);
-                     /*comprobar que es de tipo array la variable y que expresion es de tipo entero, si lo son
-                     $$ = T_ELEMENTOS_ARRAY (mirar estructura CAMP) */
+                     CAMP camp = obtTdA(sym.ref);
+                     if(sym.t == T_ERROR) { /*¿Error? */
+                        yyerror("Objeto no declarado");
+                        $$ = T_ERROR;
+                     } else if(sym.t != T_ARRAY) { /* ¿Array */
+                        yyerror("El identificador debe ser de tipo \"array\"");
+                        $$ = T_ERROR;
+                     } else if($3 != T_ENTERO) { /* Indice entero */
+                        yyerror("El indice del \"array\" debe ser entero");
+                        $$ = T_ERROR;
+                     }  else
+                        $$ = camp.t;
                 }
                 | ID_ APAR_ parametrosActuales CPAR_ {
                      /* preguntar la profesor */
