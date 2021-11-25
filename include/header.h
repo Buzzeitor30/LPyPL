@@ -9,8 +9,14 @@
 /****************************************************** Constantes generales */
 #define TRUE  1
 #define FALSE 0
-/****************************************************** Cositas */
+/****************************************************** Constantes simbolicas */
 #define TALLA_TIPO_SIMPLE 1
+#define TALLA_SEGENLACES 2
+/*************************Variables externas definidas en Programa Principal***/
+extern int verTdS;                            /*Flag para mostrar la TDS      */
+/************************Variables externas definidas en librerias*************/
+extern int dvar;                              /*Desplazamiento Segmento vars. */
+extern int niv;                               /*Nivel anidamiento*/
 /************************************* Variables externas definidas en el AL */
 extern int yylex();
 extern int yyparse();

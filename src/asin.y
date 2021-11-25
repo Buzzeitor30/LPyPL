@@ -37,14 +37,15 @@ extern int yylineno;
 /* TIPOS SIMPLES*/
 %token  INT_ TRUE_ FALSE_
 %type <CampoRegistro> listaCampos
-%type <cent> tipoSimple parametrosFormales instruccionAsignacion constante
+%type <cent> tipoSimple parametrosFormales instruccionAsignacion constante 
+%type <cent> declaracion declaracionFuncion declaracionVariable
 /*--------EXPRESIONES-----------------------*/
 %type <cent> expresion expresionUnaria expresionIgualdad expresionRelacional 
 %type <cent> expresionSufija expresionAditiva expresionMultiplicativa
 /* GRAMATICA COPIADA DIRECTAMENTE DEL BOLETÍN */
 %%
 
-programa : listaDeclaraciones
+programa : listaDeclaraciones {n=0;dvar=0;}
          ;
 
 listaDeclaraciones : declaracion
@@ -79,7 +80,9 @@ else dvar += TALLA_TIPO_SIMPLE;
 | STRUC_ ABLOQ_ listaCampos CBLOQ_ ID_ FINL_ {
    if(!insTdS($5, VARIABLE, T_RECORD, niv, dvar, $<CampoRegistro.refe>3)) {
       yyerror("Identificador repetido");
-   } /* Meter un else donde se incrementa el dvar en función de la listaCampos */
+   } else {
+      dvar += $<CampoRegistro.desp_r>3
+   }/* Meter un else donde se incrementa el dvar en función de la listaCampos */
 };
 
 /* HECHO */
@@ -111,20 +114,30 @@ listaCampos tipoSimple ID_ FINL_ {
 ;
 /* TODO */
                      /* nivel para variables locales                                                  descargamos contexto y reestablecemos nivel*/ 
-declaracionFuncion : tipoSimple {niv++;cargaContexto(niv);} ID_ APAR_ parametrosFormales CPAR_ bloque {descargaContexto(niv);niv--;} {
-                           if(!insTdS($3, FUNCION, $2, 0, dvar, $5))
+declaracionFuncion : tipoSimple {niv++;cargaContexto(niv);$$ = dvar;dvar = 0;} ID_ APAR_ parametrosFormales CPAR_ bloque  {
+                           int aux = $$;
+                           if(!insTdS($3, FUNCION, $1, niv, dvar, $5))
                               yyerror("La función ya ha sido declarada de forma previa");
+                           
+                           if(verTdS)
+                              mostrarTdS()  
+                           descargaContexto(niv);niv--;dvar = aux;
                      }
                    ;
 
 /* TODO */
 parametrosFormales : {$$ = insTdD(-1, T_VACIO);}  
-                   | listaParametrosFormales /* {$$ = $1}  TODO AHORITA */
+                   | listaParametrosFormales  {$$ = $1;}  
                    ;
 
 /*TODO */
 listaParametrosFormales : tipoSimple ID_ {
                            int refe = insTdD(-1, $1);
+                           dvar += TALLA_TIPO_SIMPLE + TALLA_SEG_ENLACES;
+                           int ins = insTdS($2, PARAMETRO, $1, niv, -dvar, -1);
+                           if(ins == 0) {
+                              yyerror()
+                           }
                         }
                         | tipoSimple ID_ COMA_ listaParametrosFormales
                         ;
@@ -214,12 +227,13 @@ instruccionSeleccion : IF_ APAR_ expresion {if($3 != T_LOGICO)yyerror("La expres
 instruccionIteracion : WHILE_ APAR_ expresion {if($3 != T_LOGICO)yyerror("La expresion del \"while\" debe ser \"logico\"")} CPAR_ instruccion
                      ;
 
+/*
 expresion : expresionIgualdad {$$ = $1;}
           | expresion operadorLogico expresionIgualdad{
-              /* Si uno de las dos expresiones no es de tipo logico tenemos un error */
+              /* Si uno de las dos expresiones no es de tipo logico tenemos un error 
                if ($1 == T_ERROR || $3 == T_ERROR) 
                    $$ = T_ERROR;
-               if(!($1 == T_LOGICO && $1 == $3)) {
+               else if(!($1 == T_LOGICO && $1 == $3)) {
                     $$ = T_ERROR;
                     yyerror("Error en \"expresion logica\"");
                }
@@ -248,7 +262,7 @@ expresionRelacional : expresionAditiva {$$ = $1;}
                         else if(!($1 == T_ENTERO || $1 == $3)) {
                            $$ = T_ERROR;
                            yyerror("Error en \"expresion relacional\"");
-                        } /*PREGUNTAR SI SE PUEDE HACER TRUE < FALSE */
+                        } /*PREGUNTAR SI SE PUEDE HACER TRUE < FALSE 
                         else {
                            $$ = T_LOGICO;
                         }
@@ -283,15 +297,13 @@ expresionMultiplicativa : expresionUnaria {$$ = $1;}
                         ;
 
 expresionUnaria : expresionSufija {$$ = $1;}
-                | operadorUnario expresionUnaria /* PREGUNTAR AL PROFESOR */ 
+                | operadorUnario expresionUnaria /* PREGUNTAR AL PROFESOR 
                 ;
 
 expresionSufija : constante 
                 | APAR_ expresion CPAR_ {$$ = $2;}
                 | ID_ {
                      SIMB sym = obtTdS($1);
-                     /* comprobar que existe la variable, como al declarar la variable normal ,
-                     si no existe (negad el IF) asignad tipo error, sino asignad sym.t*/
                      if(sym.t == T_ERROR)) {
                         yyerror("Objeto no declarado");
                         $$ = T_ERROR;
@@ -301,14 +313,14 @@ expresionSufija : constante
                 | ID_ PUNT_ ID_ {
                      SIMB sym = obtTdS($1);
                      CAMP camp = obtTdR(sym.ref, $3);
-                     /*¿ERROR?*/
+                     /*¿ERROR?
                      if(sym.t == T_ERROR) {
                         yyerror("Objeto no declarado");
                         $$ = T_ERROR;
-                     } else if(sym.t != T_RECORD) { /*¿Estructura*/
+                     } else if(sym.t != T_RECORD) { /*¿Estructura
                         yyerror("El identificador debe ser de tipo \"struct\"");
                         $$ = T_ERROR;
-                     } else if (camp.t == T_ERROR) { /*¿Campo declarado?*/
+                     } else if (camp.t == T_ERROR) { /*¿Campo declarado?
                         yyerror("Campo no declarado");
                         $$ = T_ERROR;
                      } else
@@ -317,20 +329,20 @@ expresionSufija : constante
                 | ID_ AIND_ expresion CIND_ {
                      SIMB sym = obtTds($1);
                      CAMP camp = obtTdA(sym.ref);
-                     if(sym.t == T_ERROR) { /*¿Error? */
+                     if(sym.t == T_ERROR) { /*¿Error? 
                         yyerror("Objeto no declarado");
                         $$ = T_ERROR;
-                     } else if(sym.t != T_ARRAY) { /* ¿Array */
+                     } else if(sym.t != T_ARRAY) { /* ¿Array 
                         yyerror("El identificador debe ser de tipo \"array\"");
                         $$ = T_ERROR;
-                     } else if($3 != T_ENTERO) { /* Indice entero */
+                     } else if($3 != T_ENTERO) { /* Indice entero 
                         yyerror("El indice del \"array\" debe ser entero");
                         $$ = T_ERROR;
                      }  else
                         $$ = camp.t;
                 }
                 | ID_ APAR_ parametrosActuales CPAR_ {
-                     /* preguntar la profesor */
+                     /* preguntar la profesor 
                 }
                 ;
 
