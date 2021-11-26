@@ -120,12 +120,14 @@ listaCampos tipoSimple ID_ FINL_ {
 ;
 /* TODO */
                      /* nivel para variables locales                                                  descargamos contexto y reestablecemos nivel*/ 
-declaracionFuncion : tipoSimple  ID_ {$<cent>$ = dvar;dvar = 0;niv++;cargaContexto(niv);} APAR_ parametrosFormales CPAR_ 
-                     {if(!insTdS($2, FUNCION, $1, niv - 1, dvar, $5)) yyerror("La función ya ha sido declarada de forma previa");} /* TODO: main() */
+declaracionFuncion : tipoSimple  ID_
+          {$<cent>$ = dvar;dvar = 0;niv++;cargaContexto(niv);} 
+         APAR_ parametrosFormales CPAR_ 
+               {if(!insTdS($2, FUNCION, $1, niv - 1, -1, $5)) yyerror("La función ya ha sido declarada de forma previa");} /* TODO: main() */
                      bloque {                           
                            if(verTdS)
                               mostrarTdS(); 
-                           descargaContexto(niv);niv--;dvar = $<cent>2;
+                           descargaContexto(niv);niv--;dvar = $<cent>3;
                      }
                    ;
 
