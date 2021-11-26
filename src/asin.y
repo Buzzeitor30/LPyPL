@@ -50,7 +50,7 @@ extern int yylineno;
 /* GRAMATICA COPIADA DIRECTAMENTE DEL BOLETÍN */
 %%
 
-programa : listaDeclaraciones {niv=0;cargaContexto(n);dvar=0;}
+programa : listaDeclaraciones {niv=0;cargaContexto(niv);dvar=0;}
          ;
 
 listaDeclaraciones : declaracion
@@ -83,10 +83,10 @@ else dvar += TALLA_TIPO_SIMPLE;
    else dvar += numelem * TALLA_TIPO_SIMPLE; 
 }
 | STRUC_ ABLOQ_ listaCampos CBLOQ_ ID_ FINL_ {
-   if(!insTdS($5, VARIABLE, T_RECORD, niv, dvar, $<CampoRegistro.refe>3)) {
+   if(!insTdS($5, VARIABLE, T_RECORD, niv, dvar, $3.refe)) {
       yyerror("Identificador repetido");
    } else {
-      dvar += $<CampoRegistro.desp_r>3;
+      dvar += $3.desp_r;
    }/* Meter un else donde se incrementa el dvar en función de la listaCampos */
 };
 
@@ -102,18 +102,19 @@ tipoSimple ID_ FINL_ {
    if(refe == -1)
       yyerror("Campo ya existente en el registro");
    else {
-      $<CampoRegistro.refe>$ = refe;
-      $<CampoRegistro.desp_r>$ = TALLA_TIPO_SIMPLE; /*TALLA_TIPO_SIMPLE */
+      $$.refe = refe;
+      $$.desp_r = TALLA_TIPO_SIMPLE; /*TALLA_TIPO_SIMPLE */
    };
 }
 | 
 listaCampos tipoSimple ID_ FINL_ {
-   int desp = $<CampoRegistro.desp_r>1;
-   $<CampoRegistro.refe>$ = $<CampoRegistro.refe>1;
-   if (insTdR($<CampoRegistro.refe>1,$3, $2, desp) == -1)
+   $$.ref = $1.ref;
+   $$.desp_r = $1.desp_r;
+   if (insTdR($1.refe,$3, $2, $1.desp_r) == -1)
       yyerror("Campo ya existente en el registro");
    else {
-      $<CampoRegistro.desp_r>$ = desp + TALLA_TIPO_SIMPLE; /* TALLA_TIPO_SIMPLE */
+      $$.ref = $1.ref;
+      $$.desp_r = $1.desp_r + TALLA_TIPO_SIMPLE; /* TALLA_TIPO_SIMPLE */
    }
 }
 ;
