@@ -131,21 +131,21 @@ declaracionFuncion : tipoSimple  ID_ {$<cent>$ = dvar;dvar = 0;niv++;cargaContex
 
 /* TODO */
 parametrosFormales : {$$ = insTdD(-1, T_VACIO);}  
-                   | listaParametrosFormales  {$$ = $<ParamForm.refe>1;} /* solo necesitamos la referencia */  
+                   | listaParametrosFormales  {$$ = $1.refe;} /* solo necesitamos la referencia */  
                    ;
 
 /*HECHO*/
 listaParametrosFormales : tipoSimple ID_ {
-                           $<ParamForm.refe>$ = insTdD(-1, $1); /*insertamos*/
-                           $<ParamForm.talla>$ = TALLA_TIPO_SIMPLE + TALLA_SEGENLACES; /*incrementamos talla */
-                           if(!insTdS($2, PARAMETRO, $1, niv, -$<ParamForm.talla>$, -1)) { /*insertamos parametro en la tabla de simbolos */
+                           $$.refe = insTdD(-1, $1); /*insertamos*/
+                           $$.talla = TALLA_TIPO_SIMPLE + TALLA_SEGENLACES; /*incrementamos talla */
+                           if(!insTdS($2, PARAMETRO, $1, niv, -$$.talla, -1)) { /*insertamos parametro en la tabla de simbolos */
                               yyerror("Identificador del parametro repetido");
                            }
                         }
                         | tipoSimple ID_ COMA_ listaParametrosFormales {
-                           $<ParamForm.talla>$ = TALLA_TIPO_SIMPLE + $<ParamForm.talla>4; /*Nueva parametro, incrementamos talla */
-                           $<ParamForm.refe>$ = insTdD($<ParamForm.refe>4,$1); /* nos quedamos con la referencia del nuevo parametro */
-                           if(!insTdS($2, PARAMETRO, $1, niv,-$<ParamForm.talla>$, -1)) /* insertamos TdS */
+                           $$.talla = TALLA_TIPO_SIMPLE + $4.talla; /*Nueva parametro, incrementamos talla */
+                           $$.refe = insTdD($4.refe,$1); /* nos quedamos con la referencia del nuevo parametro */
+                           if(!insTdS($2, PARAMETRO, $1, niv,-$$.talla, -1)) /* insertamos TdS */
                               yyerror("Identificador de parametro repetido");
                         }
                         ;
