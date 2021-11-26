@@ -108,12 +108,12 @@ tipoSimple ID_ FINL_ {
 }
 | 
 listaCampos tipoSimple ID_ FINL_ {
-   $$.ref = $1.ref;
+   $$.refe = $1.refe;
    $$.desp_r = $1.desp_r;
    if (insTdR($1.refe,$3, $2, $1.desp_r) == -1)
       yyerror("Campo ya existente en el registro");
    else {
-      $$.ref = $1.ref;
+      $$.refe = $1.refe;
       $$.desp_r = $1.desp_r + TALLA_TIPO_SIMPLE; /* TALLA_TIPO_SIMPLE */
    }
 }
