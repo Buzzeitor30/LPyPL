@@ -50,7 +50,7 @@ extern int yylineno;
 /* GRAMATICA COPIADA DIRECTAMENTE DEL BOLETÍN */
 %%
 
-programa : listaDeclaraciones {niv=0;dvar=0;}
+programa : listaDeclaraciones {niv=0;cargaContexto(n);dvar=0;}
          ;
 
 listaDeclaraciones : declaracion
