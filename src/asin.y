@@ -42,11 +42,11 @@ extern int yylineno;
 %token  INT_ TRUE_ FALSE_
 %type <CampoRegistro> listaCampos
 %type <ParamForm> listaParametrosFormales;
-%type <cent> tipoSimple parametrosFormales instruccionAsignacion constante
+%type <cent> tipoSimple parametrosFormales constante /* instruccionAsignacion constante */
 %type <cent> declaracion declaracionFuncion declaracionVariable
 /*--------EXPRESIONES-----------------------*/
-%type <cent> expresion expresionUnaria expresionIgualdad expresionRelacional 
-%type <cent> expresionSufija expresionAditiva expresionMultiplicativa operadorUnario
+/* %type <cent> expresion expresionUnaria expresionIgualdad expresionRelacional 
+%type <cent> expresionSufija expresionAditiva expresionMultiplicativa operadorUnario */
 /* GRAMATICA COPIADA DIRECTAMENTE DEL BOLETÍN */
 %%
 
@@ -119,14 +119,12 @@ listaCampos tipoSimple ID_ FINL_ {
 ;
 /* TODO */
                      /* nivel para variables locales                                                  descargamos contexto y reestablecemos nivel*/ 
-declaracionFuncion : tipoSimple  {$<cent>$ = dvar;dvar = 0;niv++;cargaContexto(niv);}ID_ APAR_ parametrosFormales CPAR_ bloque  {
-                           int aux = $<cent>$;
-                           if(!insTdS($3, FUNCION, $1, niv - 1, dvar, $5))
-                              yyerror("La función ya ha sido declarada de forma previa");
-                           
+declaracionFuncion : tipoSimple  ID_ {$<cent>$ = dvar;dvar = 0;niv++;cargaContexto(niv);} APAR_ parametrosFormales CPAR_ 
+                     {if(!insTdS($2, FUNCION, $1, niv - 1, dvar, $5)) yyerror("La función ya ha sido declarada de forma previa");} /* TODO: main() */
+                     bloque {                           
                            if(verTdS)
                               mostrarTdS(); 
-                           descargaContexto(niv);niv--;dvar = aux;
+                           descargaContexto(niv);niv--;dvar = $<cent>2;
                      }
                    ;
 
@@ -138,7 +136,7 @@ parametrosFormales : {$$ = insTdD(-1, T_VACIO);}
 /*HECHO*/
 listaParametrosFormales : tipoSimple ID_ {
                            $<ParamForm.refe>$ = insTdD(-1, $1); /*insertamos*/
-                           $<ParamForm.talla>$ += TALLA_TIPO_SIMPLE + TALLA_SEGENLACES; /*incrementamos talla */
+                           $<ParamForm.talla>$ = TALLA_TIPO_SIMPLE + TALLA_SEGENLACES; /*incrementamos talla */
                            if(!insTdS($2, PARAMETRO, $1, niv, -$<ParamForm.talla>$, -1)) { /*insertamos parametro en la tabla de simbolos */
                               yyerror("Identificador del parametro repetido");
                            }
@@ -152,13 +150,13 @@ listaParametrosFormales : tipoSimple ID_ {
                         ;
 
 bloque : ABLOQ_ declaracionVariableLocal listaInstrucciones 
-         RETURN_ expresion FINL_ CBLOQ_ {
-            INF func = obtTdD(-1); /* Sacamos la info la de funcion actual */
-            /* Los tipos que tienen que devolver coinciden */
+         RETURN_ expresion FINL_ CBLOQ_ /* {
+            INF func = obtTdD(-1); /* Sacamos la info la de funcion actual 
+            /* Los tipos que tienen que devolver coinciden 
             if (func.tipo != $5) {
                yyerror("El valor de retorno no coincide con el de la declaración de la funcion");
             }
-         }
+         } */
 
 /* HECHO, como niv=0 al declarar funcion, no hace falta ponerlo */
 declaracionVariableLocal :  /* epsilon */
@@ -407,8 +405,9 @@ operadorMultiplicativo : POR_
                        | DIV_
                        ;
 
-operadorUnario : MAS_ {$$ = T_ENTERO;}
-               | MENOS_ {$$ = T_ENTERO;}
-               | NOT_ {$$ = T_LOGICO;}
+operadorUnario : MAS_ 
+               | MENOS_ 
+               | NOT_ 
+               ;
 
 %%
