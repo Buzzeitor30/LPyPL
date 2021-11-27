@@ -28,7 +28,7 @@ real            {digito}*"."{digito}+|{digito}+"."{digito}*
 constante       {entero}|{real}
 /*Los identificadores pueden empezar por mayusucula o minuscula, y luego pueden venir digitos, letras
 y el símbolo "-"" */
-id              [A-Za-z][A-Za-z0-9\-]*
+id              [A-Za-z][A-Za-z0-9\_]*
 
 
 %%
@@ -70,8 +70,8 @@ id              [A-Za-z][A-Za-z0-9\-]*
 "/"             {retornar(DIV_)}
 "!"             {retornar(NOT_)}
 
-{id}            {retornar(ID_)}
-{constante}     {retornar(CTE_)}
+{id}            {yylval.ident =strdup(yytext);retornar(ID_)}
+{constante}     {yylval.cent=atoi(yytext);retornar(CTE_)}
 
 {delimitador}   {if(verbosidad) ECHO;}
 {comentario}    {if(verbosidad) {ECHO;fprintf(stdout,"%3d.- ", yylineno);}}
