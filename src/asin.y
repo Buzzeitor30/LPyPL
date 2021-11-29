@@ -1,6 +1,9 @@
 /* **********************************************
-   ***********ANÁLISIS SINTÁCTICO****************
-   ***********ELIAS URIOS ALACREU****************
+   ********ANÁLISIS SINTÁCTICO*******************
+   ********ELIAS URIOS ALACREU*******************
+   ********JUAN ALEJANDRO FURIÓ AGUSTÍ***********
+   ********PABLO LLORCA MARCHANTE****************
+   ********FRANCISCO FERNANDEZ GARCÍA************
    ********************************************** */
 
 %{
@@ -15,13 +18,13 @@ extern int yylineno;
    char *ident; /* Nombre del id. */
    int cent; /* Valor de la cte. numérica */
    struct {
-      int refe;
-      int desp_r;
-   } CampoRegistro;
+      int refe; /*referencia en la TdR */
+      int desp_r; /* desplazamiento relativo en la TdR */
+   } CampoRegistro; /* estructura para insertar un campo en la TdR */
    struct {
-      int refe;
-      int talla;
-   } ParamForm;
+      int refe; /*referencia*/
+      int talla; /*talla parametros */
+   } ParamForm; /*estructura como ayuda para los parametros */
 }
 /*PUNTO, COMA Y PUNTO Y COMA */
 %token PUNT_ COMA_ FINL_
@@ -44,11 +47,11 @@ extern int yylineno;
 %type <CampoRegistro> listaCampos
 %type <ParamForm> listaParametrosFormales
 %type <cent> parametrosFormales listaParametrosActuales parametrosActuales
-/*EXPRESIONES*/ 
+/*EXPRESIONES Y OPERADOR*/
 %type <cent> expresion expresionAditiva expresionIgualdad expresionMultiplicativa 
 %type <cent> expresionRelacional expresionSufija expresionUnaria
 %type <cent> operadorUnario
-/*RESTO */
+/*DECLARACIONES Y TIPOS*/
 %type <cent> declaracion declaracionFuncion listaDeclaraciones declaracionVariable
 %type <cent> tipoSimple constante 
 /* GRAMATICA COPIADA DIRECTAMENTE DEL BOLETÍN */
@@ -60,16 +63,21 @@ programa :  {niv=0;dvar=0;cargaContexto(niv);} listaDeclaraciones {
                 else if($2 > 1)
                     yyerror("El programa tiene mas de un \"main\"");
                 /* else todo ok :) */
-            }
-         ;
+            };
 
-listaDeclaraciones : declaracion {$$ = $1;}
-                   | listaDeclaraciones declaracion {$$ = $1 + $2;}
+/********************************************************************/
+
+listaDeclaraciones : declaracion {$$ = $1;} /* hay que contar los main */
+                   | listaDeclaraciones declaracion {$$ = $1 + $2;} /* hay que contar lo que tenemos y lo que falta por llegar */
                    ;
 
-declaracion : declaracionVariable {$$ = 0;} /* una variable no cuenta para nada con lo del main */
+/********************************************************************/
+
+declaracion : declaracionVariable {$$ = 0;} /* una variable no puede ser una funcion main */
             | declaracionFuncion {$$ = $1;} /*cuantas veces ha aparecido el main*/
             ;
+
+/********************************************************************/
 
 declaracionVariable : tipoSimple ID_ FINL_ {
                             if(!insTdS($2, VARIABLE, $1, niv, dvar, -1)) {
@@ -99,9 +107,13 @@ declaracionVariable : tipoSimple ID_ FINL_ {
                         }
                     ;
 
+/********************************************************************/
+
 tipoSimple :    INT_ {$$=T_ENTERO;}
            |    BOOL_ {$$=T_LOGICO;}
            ;
+
+/********************************************************************/
 
 listaCampos :   tipoSimple ID_ FINL_{
                     /* NO PUEDE DAR ERROR, NO HACE FALTA COMPROBAR NADA */
@@ -119,6 +131,8 @@ listaCampos :   tipoSimple ID_ FINL_{
                     }   
                 }
             ;
+
+/********************************************************************/
 
 declaracionFuncion  :   tipoSimple ID_
                         {$<cent>$ = dvar;dvar = 0;niv++;cargaContexto(niv);} 
@@ -139,9 +153,13 @@ declaracionFuncion  :   tipoSimple ID_
                         }
                    ;
 
+/********************************************************************/
+
 parametrosFormales  :   {$$ = insTdD(-1, T_VACIO);}
                     |   listaParametrosFormales {$$ = $1.refe;}
                     ;
+
+/********************************************************************/
 
 listaParametrosFormales :   tipoSimple ID_{
                                 $$.refe = insTdD(-1, $1);
@@ -159,16 +177,24 @@ listaParametrosFormales :   tipoSimple ID_{
                         }
                         ;
 
+/********************************************************************/
+
 bloque  : ABLOQ_ declaracionVariableLocal listaInstrucciones 
          RETURN_ expresion {INF func = obtTdD(-1);if(func.tipo != $5)yyerror("Error de tipos del \"return\"");} FINL_ CBLOQ_
+
+/********************************************************************/
 
 declaracionVariableLocal: /*epsilon*/
                         | declaracionVariableLocal declaracionVariable
                         ;
 
+/********************************************************************/
+
 listaInstrucciones : /*epsilon*/
                    | listaInstrucciones instruccion
                    ;
+
+/********************************************************************/
 
 instruccion : ABLOQ_ listaInstrucciones CBLOQ_
             | instruccionAsignacion
@@ -176,6 +202,8 @@ instruccion : ABLOQ_ listaInstrucciones CBLOQ_
             | instruccionEntradaSalida
             | instruccionIteracion
             ;
+
+/********************************************************************/
 
 instruccionAsignacion : ID_ ASIG_ expresion FINL_{
                         SIMB sym = obtTdS($1); /*sacamos la estructura con el nombre de la variable*/
@@ -223,6 +251,8 @@ instruccionAsignacion : ID_ ASIG_ expresion FINL_{
                       }
                       ;
 
+/********************************************************************/
+
 instruccionEntradaSalida : READ_ APAR_ ID_ CPAR_ FINL_{
                             SIMB sym = obtTdS($3);
                             if(sym.t == T_ERROR) {
@@ -238,11 +268,17 @@ instruccionEntradaSalida : READ_ APAR_ ID_ CPAR_ FINL_{
                          }
                          ;
 
+/********************************************************************/
+
 instruccionSeleccion : IF_ APAR_ expresion {if($3 != T_LOGICO && $3 != T_ERROR)yyerror("La expresion del \"if\" debe ser \"logico\"");} CPAR_ instruccion ELSE_ instruccion
                      ;
 
+/********************************************************************/
+
 instruccionIteracion : WHILE_ APAR_ expresion{if($3 != T_LOGICO && $3 != T_ERROR)yyerror("La expresion del \"while\" debe ser \"logico\"");} CPAR_ instruccion
                      ;
+
+/********************************************************************/
 
 expresion : expresionIgualdad {$$ = $1;}
           | expresion operadorLogico expresionIgualdad {
@@ -257,6 +293,8 @@ expresion : expresionIgualdad {$$ = $1;}
           }
           ;
 
+/********************************************************************/
+
 expresionIgualdad : expresionRelacional {$$ = $1;}
                   | expresionIgualdad operadorIgualdad expresionRelacional {
                         if($1 == T_ERROR || $3 == T_ERROR)
@@ -270,6 +308,8 @@ expresionIgualdad : expresionRelacional {$$ = $1;}
                   }
                   ;
 
+/********************************************************************/
+
 expresionRelacional : expresionAditiva {$$ = $1;}
                     | expresionRelacional operadorRelacional expresionAditiva {
                         if($1 == T_ERROR || $3 == T_ERROR)
@@ -281,6 +321,8 @@ expresionRelacional : expresionAditiva {$$ = $1;}
                            $$ = T_LOGICO;
                     }
                     ;
+
+/********************************************************************/
 
 expresionAditiva : expresionMultiplicativa  {$$ = $1;} 
                  | expresionAditiva operadorAditivo expresionMultiplicativa {
@@ -294,6 +336,8 @@ expresionAditiva : expresionMultiplicativa  {$$ = $1;}
                             $$ = T_ENTERO;
                  }
                  ;
+
+/********************************************************************/
 
 expresionMultiplicativa : expresionUnaria {$$ = $1;}
                         | expresionMultiplicativa operadorMultiplicativo expresionUnaria {
@@ -309,6 +353,8 @@ expresionMultiplicativa : expresionUnaria {$$ = $1;}
                         }
                         ;
 
+/********************************************************************/
+
 expresionUnaria : expresionSufija {$$ = $1;}
                 | operadorUnario expresionUnaria {
                     if($2 == T_ERROR)
@@ -320,6 +366,8 @@ expresionUnaria : expresionSufija {$$ = $1;}
                         $$ = $2;
                 }
                 ;
+
+/********************************************************************/
 
 expresionSufija : constante {$$ = $1;}
                 | APAR_ expresion CPAR_ {$$ = $2;}
@@ -383,14 +431,20 @@ expresionSufija : constante {$$ = $1;}
                 }
                 ;
 
+/********************************************************************/
+
 constante : CTE_ {$$ = T_ENTERO;}
           | TRUE_ {$$ = T_LOGICO;}
           | FALSE_ {$$ = T_LOGICO;}
           ;
 
+/********************************************************************/
+
 parametrosActuales : {$$ = insTdD(-1, T_VACIO);} /* funcion sin parametros */
                    | listaParametrosActuales {$$ = $1;}
                    ;
+
+/********************************************************************/
 
 listaParametrosActuales : expresion {$$ = insTdD(-1, $1);}
                         | expresion COMA_ listaParametrosActuales {
@@ -398,13 +452,19 @@ listaParametrosActuales : expresion {$$ = insTdD(-1, $1);}
                         }
                         ;
 
+/********************************************************************/
+
 operadorLogico : AND_
                | OR_
                ;
 
+/********************************************************************/
+
 operadorIgualdad : IGU_
                  | DIST_
                  ;
+
+/********************************************************************/
 
 operadorRelacional : MAY_ 
                    | MEN_ 
@@ -412,13 +472,19 @@ operadorRelacional : MAY_
                    | MENORIGU_
                    ;
 
+/********************************************************************/
+
 operadorAditivo : MAS_
                 | MENOS_
                 ;
 
+/********************************************************************/
+
 operadorMultiplicativo : POR_
                        | DIV_
                        ;
+
+/********************************************************************/
 
 operadorUnario : MAS_ {$$ = T_ENTERO;}
                | MENOS_ {$$ = T_ENTERO;}
