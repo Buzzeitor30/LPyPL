@@ -180,7 +180,11 @@ listaParametrosFormales :   tipoSimple ID_{
 /********************************************************************/
 
 bloque  : ABLOQ_ declaracionVariableLocal listaInstrucciones 
-         RETURN_ expresion {INF func = obtTdD(-1);if(func.tipo != $5)yyerror("Error de tipos del \"return\"");} FINL_ CBLOQ_
+         RETURN_ expresion {
+		INF func = obtTdD(-1);
+		if($5 != T_ERROR && func.tipo != $5)
+			yyerror("Error de tipos del \"return\"");}
+	 FINL_ CBLOQ_
 
 /********************************************************************/
 
