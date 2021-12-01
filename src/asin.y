@@ -246,7 +246,9 @@ instruccionAsignacion : ID_ ASIG_ expresion FINL_{
                                     yyerror("El identificador debe ser de tipo \"struct\"");
                                 else {
                                     CAMP camp = obtTdR(sym.ref, $3);
-                                    if(camp.t != $5)
+                                    if(camp.t == T_ERROR)
+                                    	yyerror("Campo no declarado");
+                                    else if(camp.t != $5)
                                         yyerror("Error de tipos en la \"asignacion\"");
 
                                 }
