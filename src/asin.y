@@ -182,7 +182,10 @@ listaParametrosFormales :   tipoSimple ID_{
 bloque  : ABLOQ_ declaracionVariableLocal listaInstrucciones 
          RETURN_ expresion {
 		INF func = obtTdD(-1);
-		if($5 != T_ERROR && func.tipo != $5)
+		if(func.tipo == T_ERROR) {
+            yyerror("Error en declaracion de funcion");
+		}
+		else if($5 != T_ERROR && func.tipo != $5)
 			yyerror("Error de tipos del \"return\"");}
 	 FINL_ CBLOQ_
 
