@@ -11,6 +11,8 @@
 #include <string.h>
 #include "header.h"
 #include "libtds.h"
+#include "libgci.h"
+
 extern int yylineno;
 %}
 
@@ -25,6 +27,10 @@ extern int yylineno;
       int refe; /*referencia*/
       int talla; /*talla parametros */
    } ParamForm; /*estructura como ayuda para los parametros */
+   struct {
+      int t; 
+      int d;
+   } Expresion;
 }
 /*PUNTO, COMA Y PUNTO Y COMA */
 %token PUNT_ COMA_ FINL_
@@ -48,16 +54,17 @@ extern int yylineno;
 %type <ParamForm> listaParametrosFormales
 %type <cent> parametrosFormales listaParametrosActuales parametrosActuales
 /*EXPRESIONES Y OPERADOR*/
-%type <cent> expresion expresionAditiva expresionIgualdad expresionMultiplicativa 
-%type <cent> expresionRelacional expresionSufija expresionUnaria
-%type <cent> operadorUnario
+%type <Expresion> expresion expresionAditiva expresionIgualdad expresionMultiplicativa 
+%type <Expresion> expresionRelacional expresionSufija expresionUnaria
 /*DECLARACIONES Y TIPOS*/
 %type <cent> declaracion declaracionFuncion listaDeclaraciones declaracionVariable
 %type <cent> tipoSimple constante 
+/*OPERADORES*/
+%type <cent> operadorAditivo operadorIgualdad operadorLogico operadorMultiplicativo operadorRelacional operadorUnario
 /* GRAMATICA COPIADA DIRECTAMENTE DEL BOLETÍN */
 %%
 
-programa :  {niv=0;dvar=0;cargaContexto(niv);} listaDeclaraciones {
+programa :  {niv=0;dvar=0;si=0;cargaContexto(niv);} listaDeclaraciones {
                 if($2 == 0)
                     yyerror("El programa no tiene \"main\"");
                 else if($2 > 1)
@@ -319,7 +326,7 @@ expresionIgualdad : expresionRelacional {$$ = $1;}
 expresionRelacional : expresionAditiva {$$ = $1;}
                     | expresionRelacional operadorRelacional expresionAditiva {
                         if($1 == T_ERROR || $3 == T_ERROR)
-                           $$ = T_ERROR;
+                           $$.t = T_ERROR;
                         else if(!($1 == T_ENTERO && $1 == $3)) {
                            $$ = T_ERROR;
                            yyerror("Error en \"expresion relacional\"");
@@ -332,14 +339,16 @@ expresionRelacional : expresionAditiva {$$ = $1;}
 
 expresionAditiva : expresionMultiplicativa  {$$ = $1;} 
                  | expresionAditiva operadorAditivo expresionMultiplicativa {
-                        
-                        if($1 == T_ERROR || $3 == T_ERROR)
-                            $$ = T_ERROR;
-                        else if($1 != T_ENTERO || $3 != T_ENTERO) {
-                            $$ = T_ERROR;
+                        if($1.tipo == T_ERROR || $3.tipo == T_ERROR)
+                            $$.tipo = T_ERROR;
+                        else if($1.tipo != T_ENTERO || $3.tipo != T_ENTERO) {
+                            $$.tipo = T_ERROR;
                             yyerror("Error en \"expresion aditiva\"");
                         } else 
-                            $$ = T_ENTERO;
+                            $$.tipo = T_ENTERO;
+                        
+                        $$.d = creaVarTemp();
+                        emite($2, crArgPos(niv, $1.d), crArgPos(niv, $3.d), crArgPos(niv, $$.d));
                  }
                  ;
 
@@ -460,34 +469,34 @@ listaParametrosActuales : expresion {$$ = insTdD(-1, $1);}
 
 /********************************************************************/
 
-operadorLogico : AND_
+operadorLogico : AND_ {}
                | OR_
                ;
 
 /********************************************************************/
 
-operadorIgualdad : IGU_
-                 | DIST_
+operadorIgualdad : IGU_ {$$ = EIGUAL;}
+                 | DIST_ {$$ = EDIST;}
                  ;
 
 /********************************************************************/
 
-operadorRelacional : MAY_ 
-                   | MEN_ 
-                   | MAYIGU_
-                   | MENORIGU_
+operadorRelacional : MAY_ {$$ = EMAY;}
+                   | MEN_ {$$ = EMEN;}
+                   | MAYIGU_ {$$ = EMAYEQ;}
+                   | MENORIGU_ {$$ = EMENEQ;}
                    ;
 
 /********************************************************************/
 
-operadorAditivo : MAS_
-                | MENOS_
+operadorAditivo : MAS_ {$$ = ESUM;}
+                | MENOS_ {$$ = EDIF;}
                 ;
 
 /********************************************************************/
 
-operadorMultiplicativo : POR_
-                       | DIV_
+operadorMultiplicativo : POR_ {$$ = EMULT;}
+                       | DIV_ {$$ = EDIVI;}
                        ;
 
 /********************************************************************/
