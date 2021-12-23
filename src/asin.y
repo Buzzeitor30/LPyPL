@@ -54,11 +54,11 @@ extern int yylineno;
 %type <ParamForm> listaParametrosFormales
 %type <cent> parametrosFormales listaParametrosActuales parametrosActuales
 /*EXPRESIONES Y OPERADOR*/
-%type <exp> expresion expresionAditiva expresionIgualdad expresionMultiplicativa
+%type <exp> expresion expresionAditiva expresionIgualdad expresionMultiplicativa constante
 %type <exp> expresionRelacional expresionSufija expresionUnaria
 /*DECLARACIONES Y TIPOS*/
 %type <cent> declaracion declaracionFuncion listaDeclaraciones declaracionVariable
-%type <cent> tipoSimple constante 
+%type <cent> tipoSimple  
 /*OPERADORES*/
 %type <cent> operadorAditivo operadorIgualdad operadorLogico operadorMultiplicativo operadorRelacional operadorUnario
 /* GRAMATICA COPIADA DIRECTAMENTE DEL BOLETÍN */
@@ -332,7 +332,7 @@ expresionIgualdad : expresionRelacional {$$ = $1;}
                         }
                         $$.desp = creaVarTemp();
                         emite(EASIG,crArgEnt(1),crArgNul(), crArgPos(niv, $$.desp));
-                        emite($2, crArgPos(niv, $1.desp), crArgPos(niv, $2.desp), crArgEtq(si + 2));
+                        /*emite($2, crArgPos(niv, $1.desp), crArgPos(niv, $2.desp), crArgEtq(si + 2));*/
                         emite(EASIG,crArgEnt(0),crArgNul(), crArgPos(niv, $$.desp));
                   }
                   ;
@@ -352,7 +352,7 @@ expresionRelacional : expresionAditiva {$$ = $1;}
                         $$.desp = creaVarTemp();
                         /*asumimos que es true la expresion, si se cumple saltamos, si no se cumple es false y por tanto 0 */
                         emite(EASIG,crArgEnt(1),crArgNul(), crArgPos(niv, $$.desp));
-                        emite($2, crArgPos(niv, $1.desp), crArgPos(niv, $2.desp), crArgEtq(si + 2));
+                        /*emite($2, crArgPos(niv, $1.desp), crArgPos(niv, $2.desp), crArgEtq(si + 2));*/
                         emite(EASIG,crArgEnt(0),crArgNul(), crArgPos(niv, $$.desp));                        
                     }
                     ;
@@ -407,52 +407,70 @@ expresionUnaria : expresionSufija {$$ = $1;}
 
 /********************************************************************/
 
-expresionSufija : constante {$$ = $1;}
-                | APAR_ expresion CPAR_ {$$ = $2;}
+expresionSufija : constante {
+                    $$.tipo = $1.desp;
+                    $$.desp = creaVarTemp();
+                    emite(EASIG,crArgEnt($1.desp),crArgNul(),crArgPos(niv,$$.desp));
+                }
+                | APAR_ expresion CPAR_ {
+                    $$.tipo = $2.tipo;
+                    $$.desp = $2.desp;
+                }
                 | ID_ {
                     SIMB sym = obtTdS($1);
                     if(sym.t == T_ERROR) {
-                        $$ = T_ERROR;
+                        $$.tipo = T_ERROR;
                     }else
-                        $$ = sym.t;
+                        $$.tipo = sym.t;
+
+                    $$.desp = creaVarTemp();
+                    emite(EASIG, crArgPos(sym.n, sym.d), crArgNul(), crArgPos(niv, $$.desp));
                   }
                 | ID_ PUNT_ ID_ {
                     SIMB sym = obtTdS($1);
-                    
+                    CAMP camp = obtTdR(sym.ref, $3);
                     /*¿ERROR?*/
                     if(sym.t == T_ERROR) {
                         yyerror("Objeto no declarado");
-                        $$ = T_ERROR;
+                        $$.tipo = T_ERROR;
                     } else if(sym.t != T_RECORD) { /*¿Estructura*/
                         yyerror("El identificador debe ser de tipo \"struct\"");
-                        $$ = T_ERROR;
+                        $$.tipo = T_ERROR;
                     } else {
-                        CAMP camp = obtTdR(sym.ref, $3);
                         if (camp.t == T_ERROR) { /*¿Campo declarado?*/
                             yyerror("Campo no declarado");
-                            $$ = T_ERROR;
-                        } else
-                            $$ = camp.t;
+                            $$.tipo = T_ERROR;
+                        } else {
+                            $$.tipo = camp.t;
+                        }
                     }
+                    int d = sym.d + camp.d;
+                    $$.desp = creaVarTemp();
+                    emite(EASIG,crArgEnt(d), crArgNul(), crArgPos(niv, $$.desp));
+                    
                 }
                 | ID_ AIND_ expresion CIND_ {
                     SIMB sym = obtTdS($1);
                     DIM dim = obtTdA(sym.ref);
                     if(sym.t == T_ERROR) { /*¿Error? */
                         yyerror("Objeto no declarado");
-                        $$ = T_ERROR;
+                        $$.tipo = T_ERROR;
                     } else if(sym.t != T_ARRAY) { /* ¿Array */
                         yyerror("El identificador debe ser de tipo \"array\"");
-                        $$ = T_ERROR;
-                    } else if($3 != T_ENTERO) { /* Indice entero */
+                        $$.tipo = T_ERROR;
+                    } else if($3.tipo != T_ENTERO) { /* Indice entero */
                         yyerror("El indice del \"array\" debe ser entero");
-                        $$ = T_ERROR;
-                    }  else
-                        $$ = dim.telem;
+                        $$.tipo = T_ERROR;
+                    }  else {
+                        $$.tipo = dim.telem;
+                    }
+                    /* no hace falta la primera instruccion del temario, la talla de todos los tipos es 1 */
+                    $$.desp = creaVarTemp();
+                    emite(EAV, crArgPos(sym.n,sym.d), crArgPos(niv, $3.desp), crArgPos(niv, $$.desp));
                 }
                 | ID_ APAR_ parametrosActuales CPAR_ {
                     SIMB sym = obtTdS($1);
-                    $$ = T_ERROR; /* si no llega hasta el ultimo else se queda esto */
+                    $$.tipo = T_ERROR; /* si no llega hasta el ultimo else se queda esto */
                     if(sym.t == T_ERROR)
                         yyerror("Objeto no declarado");
                     else {
@@ -462,7 +480,7 @@ expresionSufija : constante {$$ = $1;}
                         else if (cmpDom(sym.ref, $3) == 0 )
                             yyerror("El dominio de los parametros actuales no coincide con el de la funcion");
                         else
-                            $$ = inf.tipo;
+                            $$.tipo = inf.tipo;
                     }
                     
 
@@ -471,9 +489,9 @@ expresionSufija : constante {$$ = $1;}
 
 /********************************************************************/
 
-constante : CTE_ {$$ = T_ENTERO;}
-          | TRUE_ {$$ = T_LOGICO;}
-          | FALSE_ {$$ = T_LOGICO;}
+constante : CTE_ {$$.tipo = T_ENTERO; $$.desp=$1;}
+          | TRUE_ {$$.tipo = T_LOGICO; $$.desp=1;}
+          | FALSE_ {$$.tipo = T_LOGICO; $$.desp=0;}
           ;
 
 /********************************************************************/
@@ -484,9 +502,9 @@ parametrosActuales : {$$ = insTdD(-1, T_VACIO);} /* funcion sin parametros */
 
 /********************************************************************/
 
-listaParametrosActuales : expresion {$$ = insTdD(-1, $1);}
+listaParametrosActuales : expresion {$$ = insTdD(-1, $1.tipo);}
                         | expresion COMA_ listaParametrosActuales {
-                            $$ = insTdD($3, $1); 
+                            $$ = insTdD($3, $1.tipo); 
                         }
                         ;
 

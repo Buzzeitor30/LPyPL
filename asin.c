@@ -578,10 +578,10 @@ static const yytype_int16 yyrline[] =
      171,   177,   190,   189,   201,   202,   207,   208,   213,   214,
      215,   216,   217,   222,   231,   250,   272,   280,   289,   289,
      294,   294,   299,   300,   323,   324,   342,   343,   362,   363,
-     379,   380,   396,   397,   410,   411,   412,   419,   438,   453,
-     474,   475,   476,   481,   482,   487,   488,   495,   496,   501,
-     502,   507,   508,   509,   510,   515,   516,   521,   522,   527,
-     528,   529
+     379,   380,   396,   397,   410,   415,   419,   429,   453,   472,
+     493,   494,   495,   500,   501,   506,   507,   514,   515,   520,
+     521,   526,   527,   528,   529,   534,   535,   540,   541,   546,
+     547,   548
 };
 #endif
 
@@ -1591,7 +1591,7 @@ yyreduce:
                         }
                         (yyval.exp).desp = creaVarTemp();
                         emite(EASIG,crArgEnt(1),crArgNul(), crArgPos(niv, (yyval.exp).desp));
-                        emite((yyvsp[-1].cent), crArgPos(niv, (yyvsp[-2].exp).desp), crArgPos(niv, (yyvsp[-1].cent).desp), crArgEtq(si + 2));
+                        /*emite($2, crArgPos(niv, $1.desp), crArgPos(niv, $2.desp), crArgEtq(si + 2));*/
                         emite(EASIG,crArgEnt(0),crArgNul(), crArgPos(niv, (yyval.exp).desp));
                   }
 #line 1598 "asin.c"
@@ -1617,7 +1617,7 @@ yyreduce:
                         (yyval.exp).desp = creaVarTemp();
                         /*asumimos que es true la expresion, si se cumple saltamos, si no se cumple es false y por tanto 0 */
                         emite(EASIG,crArgEnt(1),crArgNul(), crArgPos(niv, (yyval.exp).desp));
-                        emite((yyvsp[-1].cent), crArgPos(niv, (yyvsp[-2].exp).desp), crArgPos(niv, (yyvsp[-1].cent).desp), crArgEtq(si + 2));
+                        /*emite($2, crArgPos(niv, $1.desp), crArgPos(niv, $2.desp), crArgEtq(si + 2));*/
                         emite(EASIG,crArgEnt(0),crArgNul(), crArgPos(niv, (yyval.exp).desp));                        
                     }
 #line 1624 "asin.c"
@@ -1691,77 +1691,96 @@ yyreduce:
 
   case 54: /* expresionSufija: constante  */
 #line 410 "src/asin.y"
-                            {(yyval.exp) = (yyvsp[0].cent);}
-#line 1696 "asin.c"
+                            {
+                    (yyval.exp).tipo = (yyvsp[0].exp).desp;
+                    (yyval.exp).desp = creaVarTemp();
+                    emite(EASIG,crArgEnt((yyvsp[0].exp).desp),crArgNul(),crArgPos(niv,(yyval.exp).desp));
+                }
+#line 1700 "asin.c"
     break;
 
   case 55: /* expresionSufija: APAR_ expresion CPAR_  */
-#line 411 "src/asin.y"
-                                        {(yyval.exp) = (yyvsp[-1].exp);}
-#line 1702 "asin.c"
+#line 415 "src/asin.y"
+                                        {
+                    (yyval.exp).tipo = (yyvsp[-1].exp).tipo;
+                    (yyval.exp).desp = (yyvsp[-1].exp).desp;
+                }
+#line 1709 "asin.c"
     break;
 
   case 56: /* expresionSufija: ID_  */
-#line 412 "src/asin.y"
+#line 419 "src/asin.y"
                       {
                     SIMB sym = obtTdS((yyvsp[0].ident));
                     if(sym.t == T_ERROR) {
-                        (yyval.exp) = T_ERROR;
+                        (yyval.exp).tipo = T_ERROR;
                     }else
-                        (yyval.exp) = sym.t;
+                        (yyval.exp).tipo = sym.t;
+
+                    (yyval.exp).desp = creaVarTemp();
+                    emite(EASIG, crArgPos(sym.n, sym.d), crArgNul(), crArgPos(niv, (yyval.exp).desp));
                   }
-#line 1714 "asin.c"
+#line 1724 "asin.c"
     break;
 
   case 57: /* expresionSufija: ID_ PUNT_ ID_  */
-#line 419 "src/asin.y"
+#line 429 "src/asin.y"
                                 {
                     SIMB sym = obtTdS((yyvsp[-2].ident));
-                    
+                    CAMP camp;
                     /*¿ERROR?*/
                     if(sym.t == T_ERROR) {
                         yyerror("Objeto no declarado");
-                        (yyval.exp) = T_ERROR;
+                        (yyval.exp).tipo = T_ERROR;
                     } else if(sym.t != T_RECORD) { /*¿Estructura*/
                         yyerror("El identificador debe ser de tipo \"struct\"");
-                        (yyval.exp) = T_ERROR;
+                        (yyval.exp).tipo = T_ERROR;
                     } else {
-                        CAMP camp = obtTdR(sym.ref, (yyvsp[0].ident));
+                        camp = obtTdR(sym.ref, (yyvsp[0].ident));
                         if (camp.t == T_ERROR) { /*¿Campo declarado?*/
                             yyerror("Campo no declarado");
-                            (yyval.exp) = T_ERROR;
-                        } else
-                            (yyval.exp) = camp.t;
+                            (yyval.exp).tipo = T_ERROR;
+                        } else {
+                            (yyval.exp).tipo = camp.t;
+                        }
                     }
+                    int d = sym.d + camp.d;
+                    (yyval.exp).desp = creaVarTemp();
+                    emite(EASIG,crArgEnt(d), crArgNul(), crArgPos(niv, (yyval.exp).desp));
+                    
                 }
-#line 1738 "asin.c"
+#line 1753 "asin.c"
     break;
 
   case 58: /* expresionSufija: ID_ AIND_ expresion CIND_  */
-#line 438 "src/asin.y"
+#line 453 "src/asin.y"
                                             {
                     SIMB sym = obtTdS((yyvsp[-3].ident));
                     DIM dim = obtTdA(sym.ref);
                     if(sym.t == T_ERROR) { /*¿Error? */
                         yyerror("Objeto no declarado");
-                        (yyval.exp) = T_ERROR;
+                        (yyval.exp).tipo = T_ERROR;
                     } else if(sym.t != T_ARRAY) { /* ¿Array */
                         yyerror("El identificador debe ser de tipo \"array\"");
-                        (yyval.exp) = T_ERROR;
-                    } else if((yyvsp[-1].exp) != T_ENTERO) { /* Indice entero */
+                        (yyval.exp).tipo = T_ERROR;
+                    } else if((yyvsp[-1].exp).tipo != T_ENTERO) { /* Indice entero */
                         yyerror("El indice del \"array\" debe ser entero");
-                        (yyval.exp) = T_ERROR;
-                    }  else
-                        (yyval.exp) = dim.telem;
+                        (yyval.exp).tipo = T_ERROR;
+                    }  else {
+                        (yyval.exp).tipo = dim.telem;
+                    }
+                    /* no hace falta la primera instruccion del temario, la talla de todos los tipos es 1 */
+                    (yyval.exp).desp = creaVarTemp();
+                    emite(EAV, crArgPos(sym.n,sym.d), crArgPos(niv, (yyvsp[-1].exp).desp), crArgPos(niv, (yyval.exp).desp));
                 }
-#line 1758 "asin.c"
+#line 1777 "asin.c"
     break;
 
   case 59: /* expresionSufija: ID_ APAR_ parametrosActuales CPAR_  */
-#line 453 "src/asin.y"
+#line 472 "src/asin.y"
                                                      {
                     SIMB sym = obtTdS((yyvsp[-3].ident));
-                    (yyval.exp) = T_ERROR; /* si no llega hasta el ultimo else se queda esto */
+                    (yyval.exp).tipo = T_ERROR; /* si no llega hasta el ultimo else se queda esto */
                     if(sym.t == T_ERROR)
                         yyerror("Objeto no declarado");
                     else {
@@ -1771,150 +1790,150 @@ yyreduce:
                         else if (cmpDom(sym.ref, (yyvsp[-1].cent)) == 0 )
                             yyerror("El dominio de los parametros actuales no coincide con el de la funcion");
                         else
-                            (yyval.exp) = inf.tipo;
+                            (yyval.exp).tipo = inf.tipo;
                     }
                     
 
                 }
-#line 1780 "asin.c"
+#line 1799 "asin.c"
     break;
 
   case 60: /* constante: CTE_  */
-#line 474 "src/asin.y"
-                 {(yyval.cent) = T_ENTERO;}
-#line 1786 "asin.c"
+#line 493 "src/asin.y"
+                 {(yyval.exp).tipo = T_ENTERO; (yyval.exp).desp=(yyvsp[0].cent);}
+#line 1805 "asin.c"
     break;
 
   case 61: /* constante: TRUE_  */
-#line 475 "src/asin.y"
-                  {(yyval.cent) = T_LOGICO;}
-#line 1792 "asin.c"
+#line 494 "src/asin.y"
+                  {(yyval.exp).tipo = T_LOGICO; (yyval.exp).desp=1;}
+#line 1811 "asin.c"
     break;
 
   case 62: /* constante: FALSE_  */
-#line 476 "src/asin.y"
-                   {(yyval.cent) = T_LOGICO;}
-#line 1798 "asin.c"
+#line 495 "src/asin.y"
+                   {(yyval.exp).tipo = T_LOGICO; (yyval.exp).desp=0;}
+#line 1817 "asin.c"
     break;
 
   case 63: /* parametrosActuales: %empty  */
-#line 481 "src/asin.y"
+#line 500 "src/asin.y"
                      {(yyval.cent) = insTdD(-1, T_VACIO);}
-#line 1804 "asin.c"
+#line 1823 "asin.c"
     break;
 
   case 64: /* parametrosActuales: listaParametrosActuales  */
-#line 482 "src/asin.y"
+#line 501 "src/asin.y"
                                              {(yyval.cent) = (yyvsp[0].cent);}
-#line 1810 "asin.c"
+#line 1829 "asin.c"
     break;
 
   case 65: /* listaParametrosActuales: expresion  */
-#line 487 "src/asin.y"
-                                    {(yyval.cent) = insTdD(-1, (yyvsp[0].exp));}
-#line 1816 "asin.c"
+#line 506 "src/asin.y"
+                                    {(yyval.cent) = insTdD(-1, (yyvsp[0].exp).tipo);}
+#line 1835 "asin.c"
     break;
 
   case 66: /* listaParametrosActuales: expresion COMA_ listaParametrosActuales  */
-#line 488 "src/asin.y"
+#line 507 "src/asin.y"
                                                                   {
-                            (yyval.cent) = insTdD((yyvsp[0].cent), (yyvsp[-2].exp)); 
+                            (yyval.cent) = insTdD((yyvsp[0].cent), (yyvsp[-2].exp).tipo); 
                         }
-#line 1824 "asin.c"
+#line 1843 "asin.c"
     break;
 
   case 67: /* operadorLogico: AND_  */
-#line 495 "src/asin.y"
+#line 514 "src/asin.y"
                       {(yyval.cent) = EMULT;}
-#line 1830 "asin.c"
+#line 1849 "asin.c"
     break;
 
   case 68: /* operadorLogico: OR_  */
-#line 496 "src/asin.y"
+#line 515 "src/asin.y"
                      {(yyval.cent) = ESUM;}
-#line 1836 "asin.c"
+#line 1855 "asin.c"
     break;
 
   case 69: /* operadorIgualdad: IGU_  */
-#line 501 "src/asin.y"
+#line 520 "src/asin.y"
                         {(yyval.cent) = EIGUAL;}
-#line 1842 "asin.c"
+#line 1861 "asin.c"
     break;
 
   case 70: /* operadorIgualdad: DIST_  */
-#line 502 "src/asin.y"
+#line 521 "src/asin.y"
                          {(yyval.cent) = EDIST;}
-#line 1848 "asin.c"
+#line 1867 "asin.c"
     break;
 
   case 71: /* operadorRelacional: MAY_  */
-#line 507 "src/asin.y"
+#line 526 "src/asin.y"
                           {(yyval.cent) = EMAY;}
-#line 1854 "asin.c"
+#line 1873 "asin.c"
     break;
 
   case 72: /* operadorRelacional: MEN_  */
-#line 508 "src/asin.y"
+#line 527 "src/asin.y"
                           {(yyval.cent) = EMEN;}
-#line 1860 "asin.c"
+#line 1879 "asin.c"
     break;
 
   case 73: /* operadorRelacional: MAYIGU_  */
-#line 509 "src/asin.y"
+#line 528 "src/asin.y"
                              {(yyval.cent) = EMAYEQ;}
-#line 1866 "asin.c"
+#line 1885 "asin.c"
     break;
 
   case 74: /* operadorRelacional: MENORIGU_  */
-#line 510 "src/asin.y"
+#line 529 "src/asin.y"
                                {(yyval.cent) = EMENEQ;}
-#line 1872 "asin.c"
+#line 1891 "asin.c"
     break;
 
   case 75: /* operadorAditivo: MAS_  */
-#line 515 "src/asin.y"
+#line 534 "src/asin.y"
                        {(yyval.cent) = ESUM;}
-#line 1878 "asin.c"
+#line 1897 "asin.c"
     break;
 
   case 76: /* operadorAditivo: MENOS_  */
-#line 516 "src/asin.y"
+#line 535 "src/asin.y"
                          {(yyval.cent) = EDIF;}
-#line 1884 "asin.c"
+#line 1903 "asin.c"
     break;
 
   case 77: /* operadorMultiplicativo: POR_  */
-#line 521 "src/asin.y"
+#line 540 "src/asin.y"
                               {(yyval.cent) = EMULT;}
-#line 1890 "asin.c"
+#line 1909 "asin.c"
     break;
 
   case 78: /* operadorMultiplicativo: DIV_  */
-#line 522 "src/asin.y"
+#line 541 "src/asin.y"
                               {(yyval.cent) = EDIVI;}
-#line 1896 "asin.c"
+#line 1915 "asin.c"
     break;
 
   case 79: /* operadorUnario: MAS_  */
-#line 527 "src/asin.y"
+#line 546 "src/asin.y"
                       {(yyval.cent) = T_ENTERO;}
-#line 1902 "asin.c"
+#line 1921 "asin.c"
     break;
 
   case 80: /* operadorUnario: MENOS_  */
-#line 528 "src/asin.y"
+#line 547 "src/asin.y"
                         {(yyval.cent) = T_ENTERO;}
-#line 1908 "asin.c"
+#line 1927 "asin.c"
     break;
 
   case 81: /* operadorUnario: NOT_  */
-#line 529 "src/asin.y"
+#line 548 "src/asin.y"
                       {(yyval.cent) = T_LOGICO;}
-#line 1914 "asin.c"
+#line 1933 "asin.c"
     break;
 
 
-#line 1918 "asin.c"
+#line 1937 "asin.c"
 
       default: break;
     }
@@ -2107,5 +2126,5 @@ yyreturnlab:
   return yyresult;
 }
 
-#line 531 "src/asin.y"
+#line 550 "src/asin.y"
 
