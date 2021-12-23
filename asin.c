@@ -577,8 +577,8 @@ static const yytype_int16 yyrline[] =
      108,   119,   120,   125,   130,   145,   146,   144,   165,   166,
      171,   177,   190,   189,   201,   202,   207,   208,   213,   214,
      215,   216,   217,   222,   231,   250,   272,   280,   289,   289,
-     294,   294,   299,   300,   323,   324,   340,   341,   361,   362,
-     378,   379,   396,   397,   410,   411,   412,   419,   438,   453,
+     294,   294,   299,   300,   323,   324,   342,   343,   362,   363,
+     379,   380,   396,   397,   410,   411,   412,   419,   438,   453,
      474,   475,   476,   481,   482,   487,   488,   495,   496,   501,
      502,   507,   508,   509,   510,   515,   516,   521,   522,   527,
      528,   529
@@ -1590,19 +1590,21 @@ yyreduce:
                             (yyval.exp).tipo = T_LOGICO;
                         }
                         (yyval.exp).desp = creaVarTemp();
-                        emite((yyvsp[-1].cent), crArgPos(niv, (yyvsp[-2].exp).desp), crArgPos(niv, (yyvsp[0].exp).desp), crArgPos(niv, (yyval.exp).desp));
+                        emite(EASIG,crArgEnt(1),crArgNul(), crArgPos(niv, (yyval.exp).desp));
+                        emite((yyvsp[-1].cent), crArgPos(niv, (yyvsp[-2].exp).desp), crArgPos(niv, (yyvsp[-1].cent).desp), crArgEtq(si + 2));
+                        emite(EASIG,crArgEnt(0),crArgNul(), crArgPos(niv, (yyval.exp).desp));
                   }
-#line 1596 "asin.c"
+#line 1598 "asin.c"
     break;
 
   case 46: /* expresionRelacional: expresionAditiva  */
-#line 340 "src/asin.y"
+#line 342 "src/asin.y"
                                        {(yyval.exp) = (yyvsp[0].exp);}
-#line 1602 "asin.c"
+#line 1604 "asin.c"
     break;
 
   case 47: /* expresionRelacional: expresionRelacional operadorRelacional expresionAditiva  */
-#line 341 "src/asin.y"
+#line 343 "src/asin.y"
                                                                               {
                         if((yyvsp[-2].exp).tipo == T_ERROR || (yyvsp[0].exp).tipo == T_ERROR)
                            (yyval.exp).tipo = T_ERROR;
@@ -1616,20 +1618,19 @@ yyreduce:
                         /*asumimos que es true la expresion, si se cumple saltamos, si no se cumple es false y por tanto 0 */
                         emite(EASIG,crArgEnt(1),crArgNul(), crArgPos(niv, (yyval.exp).desp));
                         emite((yyvsp[-1].cent), crArgPos(niv, (yyvsp[-2].exp).desp), crArgPos(niv, (yyvsp[-1].cent).desp), crArgEtq(si + 2));
-                        emite(EASIG,crArgEnt(0),crArgNul(), crArgPos(niv, (yyval.exp).desp));
-                        
+                        emite(EASIG,crArgEnt(0),crArgNul(), crArgPos(niv, (yyval.exp).desp));                        
                     }
-#line 1623 "asin.c"
+#line 1624 "asin.c"
     break;
 
   case 48: /* expresionAditiva: expresionMultiplicativa  */
-#line 361 "src/asin.y"
+#line 362 "src/asin.y"
                                             {(yyval.exp) = (yyvsp[0].exp);}
-#line 1629 "asin.c"
+#line 1630 "asin.c"
     break;
 
   case 49: /* expresionAditiva: expresionAditiva operadorAditivo expresionMultiplicativa  */
-#line 362 "src/asin.y"
+#line 363 "src/asin.y"
                                                                              {
                         if((yyvsp[-2].exp).tipo == T_ERROR || (yyvsp[0].exp).tipo == T_ERROR)
                             (yyval.exp).tipo = T_ERROR;
@@ -1642,29 +1643,28 @@ yyreduce:
                         (yyval.exp).desp = creaVarTemp();
                         emite((yyvsp[-1].cent), crArgPos(niv, (yyvsp[-2].exp).desp), crArgPos(niv, (yyvsp[0].exp).desp), crArgPos(niv, (yyval.exp).desp));
                  }
-#line 1646 "asin.c"
+#line 1647 "asin.c"
     break;
 
   case 50: /* expresionMultiplicativa: expresionUnaria  */
-#line 378 "src/asin.y"
+#line 379 "src/asin.y"
                                           {(yyval.exp) = (yyvsp[0].exp);}
-#line 1652 "asin.c"
+#line 1653 "asin.c"
     break;
 
   case 51: /* expresionMultiplicativa: expresionMultiplicativa operadorMultiplicativo expresionUnaria  */
-#line 379 "src/asin.y"
+#line 380 "src/asin.y"
                                                                                          {
-                            if((yyvsp[-2].exp) == T_ERROR || (yyvsp[0].exp) == T_ERROR)
+                            if((yyvsp[-2].exp).tipo == T_ERROR || (yyvsp[0].exp).tipo == T_ERROR)
                               (yyval.exp).tipo = T_ERROR;
-                            else if((yyvsp[-2].exp) != T_ENTERO || (yyvsp[0].exp) != T_ENTERO) {
+                            else if((yyvsp[-2].exp).tipo != T_ENTERO || (yyvsp[0].exp).tipo != T_ENTERO) {
                               (yyval.exp).tipo = T_ERROR;
                               yyerror("Error en \"expresion multiplicativa\"");
                             }
                             else {
                               (yyval.exp).tipo = T_ENTERO;
                             }
-                            (yyval.exp).desp = creaVarTemp();
-                            emite((yyvsp[-1].cent),crArgPos(niv, (yyvsp[-2].exp).desp), crArgPos(niv, (yyvsp[0].exp).desp), crArgPos(niv, (yyval.exp).desp));
+
                         }
 #line 1670 "asin.c"
     break;
@@ -1678,13 +1678,13 @@ yyreduce:
   case 53: /* expresionUnaria: operadorUnario expresionUnaria  */
 #line 397 "src/asin.y"
                                                  {
-                    if((yyvsp[0].exp) == T_ERROR)
-                        (yyval.exp) = (yyvsp[0].exp);
-                    else if((yyvsp[-1].cent) != (yyvsp[0].exp)) {
+                    if((yyvsp[0].exp).tipo == T_ERROR)
+                        (yyval.exp).tipo = (yyvsp[0].exp).tipo;
+                    else if((yyvsp[-1].cent) != (yyvsp[0].exp).tipo) {
                         yyerror("Error en \"expresion unaria\"");
-                        (yyval.exp) = T_ERROR;
+                        (yyval.exp).tipo = T_ERROR;
                     }else
-                        (yyval.exp) = (yyvsp[0].exp);
+                        (yyval.exp).tipo = (yyvsp[0].exp).tipo;
                 }
 #line 1690 "asin.c"
     break;

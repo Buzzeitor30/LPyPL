@@ -353,8 +353,7 @@ expresionRelacional : expresionAditiva {$$ = $1;}
                         /*asumimos que es true la expresion, si se cumple saltamos, si no se cumple es false y por tanto 0 */
                         emite(EASIG,crArgEnt(1),crArgNul(), crArgPos(niv, $$.desp));
                         emite($2, crArgPos(niv, $1.desp), crArgPos(niv, $2.desp), crArgEtq(si + 2));
-                        emite(EASIG,crArgEnt(0),crArgNul(), crArgPos(niv, $$.desp));
-                        
+                        emite(EASIG,crArgEnt(0),crArgNul(), crArgPos(niv, $$.desp));                        
                     }
                     ;
 
@@ -388,8 +387,7 @@ expresionMultiplicativa : expresionUnaria {$$ = $1;}
                             else {
                               $$.tipo = T_ENTERO;
                             }
-                            $$.desp = creaVarTemp();
-                            emite($2,crArgPos(niv, $1.desp), crArgPos(niv, $3.desp), crArgPos(niv, $$.desp));
+
                         }
                         ;
 
@@ -399,11 +397,11 @@ expresionUnaria : expresionSufija {$$ = $1;}
                 | operadorUnario expresionUnaria {
                     if($2.tipo == T_ERROR)
                         $$.tipo = $2.tipo;
-                    else if($1.tipo != $2.tipo) {
+                    else if($1 != $2.tipo) {
                         yyerror("Error en \"expresion unaria\"");
                         $$.tipo = T_ERROR;
                     }else
-                        $$.tipo = $2;
+                        $$.tipo = $2.tipo;
                 }
                 ;
 
