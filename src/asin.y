@@ -28,9 +28,9 @@ extern int yylineno;
       int talla; /*talla parametros */
    } ParamForm; /*estructura como ayuda para los parametros */
    struct {
-      int t; 
-      int d;
-   } Expresion;
+      int tipo;
+      int desp;
+   } exp;
 }
 /*PUNTO, COMA Y PUNTO Y COMA */
 %token PUNT_ COMA_ FINL_
@@ -54,8 +54,8 @@ extern int yylineno;
 %type <ParamForm> listaParametrosFormales
 %type <cent> parametrosFormales listaParametrosActuales parametrosActuales
 /*EXPRESIONES Y OPERADOR*/
-%type <Expresion> expresion expresionAditiva expresionIgualdad expresionMultiplicativa 
-%type <Expresion> expresionRelacional expresionSufija expresionUnaria
+%type <exp> expresion expresionAditiva expresionIgualdad expresionMultiplicativa
+%type <exp> expresionRelacional expresionSufija expresionUnaria
 /*DECLARACIONES Y TIPOS*/
 %type <cent> declaracion declaracionFuncion listaDeclaraciones declaracionVariable
 %type <cent> tipoSimple constante 
@@ -192,7 +192,7 @@ bloque  : ABLOQ_ declaracionVariableLocal listaInstrucciones
 		if(func.tipo == T_ERROR) {
             yyerror("Error en declaracion de funcion");
 		}
-		else if($5 != T_ERROR && func.tipo != $5)
+		else if($5.tipo != T_ERROR && func.tipo != $5.tipo)
 			yyerror("Error de tipos del \"return\"");}
 	 FINL_ CBLOQ_
 
@@ -221,27 +221,27 @@ instruccion : ABLOQ_ listaInstrucciones CBLOQ_
 
 instruccionAsignacion : ID_ ASIG_ expresion FINL_{
                         SIMB sym = obtTdS($1); /*sacamos la estructura con el nombre de la variable*/
-                        if($3 != T_ERROR) {
+                        if($3.tipo != T_ERROR) {
                             if(sym.t == T_ERROR) {
                             yyerror("Objeto no declarado");
-                            } else if(sym.t != $3 && $3 != T_ERROR)
+                            } else if(sym.t != $3.tipo && $3.tipo != T_ERROR)
                             yyerror("Error de tipos en la \"asignacion\"");
                             }
                         }
                       | ID_ AIND_ expresion CIND_ ASIG_ expresion FINL_{
                             /* Sacamos simbolo e informacion del array dado el simbolo*/
                             SIMB sym = obtTdS($1);
-                            if ($3 != T_ERROR && $6 != T_ERROR) {
+                            if ($3.tipo != T_ERROR && $6.tipo != T_ERROR) {
                                 if(sym.t == T_ERROR) {
                                     yyerror("Objeto no declarado");
                                 }else if(sym.t != T_ARRAY) { /* Tenemos que tratar con un array */
                                     yyerror("El identificador debe ser de tipo \"array\"");
                                 } else {
                                     DIM dim = obtTdA(sym.ref);
-                                    if($3 != T_ENTERO) { /* Se accede a los indicies con enteros */
+                                    if($3.tipo != T_ENTERO) { /* Se accede a los indicies con enteros */
                                         yyerror("El índice del \"array\" debe ser entero");
                                     } 
-                                    else if($6 != dim.telem) { /* La asignacion no coincide con el tipo del array */
+                                    else if($6.tipo != dim.telem) { /* La asignacion no coincide con el tipo del array */
                                         yyerror("Error de tipos en la \"asignacion\"");
                                     } 
                                 }
@@ -249,7 +249,7 @@ instruccionAsignacion : ID_ ASIG_ expresion FINL_{
                         }
                       | ID_ PUNT_ ID_ ASIG_ expresion FINL_ {
                             SIMB sym = obtTdS($1);
-                            if($5 != T_ERROR) {
+                            if($5.tipo != T_ERROR) {
                                 if(sym.t == T_ERROR)
                                     yyerror("Objeto no declarado");
                                 else if(sym.t != T_RECORD)
@@ -258,7 +258,7 @@ instruccionAsignacion : ID_ ASIG_ expresion FINL_{
                                     CAMP camp = obtTdR(sym.ref, $3);
                                     if(camp.t == T_ERROR)
                                     	yyerror("Campo no declarado");
-                                    else if(camp.t != $5)
+                                    else if(camp.t != $5.tipo)
                                         yyerror("Error de tipos en la \"asignacion\"");
 
                                 }
@@ -278,7 +278,7 @@ instruccionEntradaSalida : READ_ APAR_ ID_ CPAR_ FINL_{
                             }
                         }
                          | PRINT_ APAR_ expresion CPAR_ FINL_ {
-                           if($3 != T_ENTERO) {
+                           if($3.tipo != T_ENTERO) {
                               yyerror("La expresion del \"print\" debe ser entera");
                            }
                          }
@@ -286,26 +286,35 @@ instruccionEntradaSalida : READ_ APAR_ ID_ CPAR_ FINL_{
 
 /********************************************************************/
 
-instruccionSeleccion : IF_ APAR_ expresion {if($3 != T_LOGICO && $3 != T_ERROR)yyerror("La expresion del \"if\" debe ser \"logico\"");} CPAR_ instruccion ELSE_ instruccion
+instruccionSeleccion : IF_ APAR_ expresion {if($3.tipo != T_LOGICO && $3.tipo != T_ERROR)yyerror("La expresion del \"if\" debe ser \"logico\"");} CPAR_ instruccion ELSE_ instruccion
                      ;
 
 /********************************************************************/
 
-instruccionIteracion : WHILE_ APAR_ expresion{if($3 != T_LOGICO && $3 != T_ERROR)yyerror("La expresion del \"while\" debe ser \"logico\"");} CPAR_ instruccion
+instruccionIteracion : WHILE_ APAR_ expresion{if($3.tipo != T_LOGICO && $3.tipo != T_ERROR)yyerror("La expresion del \"while\" debe ser \"logico\"");} CPAR_ instruccion
                      ;
 
 /********************************************************************/
 
 expresion : expresionIgualdad {$$ = $1;}
           | expresion operadorLogico expresionIgualdad {
-                if ($1 == T_ERROR || $3 == T_ERROR) 
-                   $$ = T_ERROR;
-                else if(!($1 == T_LOGICO && $1 == $3)) {
-                    $$ = T_ERROR;
+                if ($1.tipo == T_ERROR || $3.tipo == T_ERROR) 
+                   $$.tipo = T_ERROR;
+                else if(!($1.tipo == T_LOGICO && $1.tipo == $3.tipo)) {
+                    $$.tipo = T_ERROR;
                     yyerror("Error en \"expresion logica\"");
                 }
                 else
-                    $$ = T_LOGICO;
+                    $$.tipo = T_LOGICO;
+                
+                $$.desp = creaVarTemp();
+                emite($2, crArgPos(niv, $1.desp), crArgPos(niv, $3.desp), crArgPos(niv, $$.desp));
+                if($2 == ESUM) {
+                    /* if $$ <= 1 then goto si + 2 (diapositivas) */
+                    emite(EMENEQ, crArgPos(niv, $$.desp), crArgEnt(1), crArgEtq(si + 2));
+                    /*asignacion por si la suma da mayor que uno */
+                    emite(EASIG, crArgEnt(1), crArgNul(), crArgPos(niv, $$.desp));
+                }
           }
           ;
 
@@ -313,14 +322,18 @@ expresion : expresionIgualdad {$$ = $1;}
 
 expresionIgualdad : expresionRelacional {$$ = $1;}
                   | expresionIgualdad operadorIgualdad expresionRelacional {
-                        if($1 == T_ERROR || $3 == T_ERROR)
-                            $$ = T_ERROR;
-                        else if(!(($1 == T_LOGICO && $1 == $3) || ($1 == T_ENTERO && $1 == $3) )) {
-                            $$ = T_ERROR;
+                        if($1.tipo == T_ERROR || $3.tipo == T_ERROR)
+                            $$.tipo = T_ERROR;
+                        else if(!(($1.tipo == T_LOGICO && $1.tipo == $3.tipo) || ($1.tipo == T_ENTERO && $1.tipo == $3.tipo) )) {
+                            $$.tipo = T_ERROR;
                             yyerror("Error en \"expresion de igualdad\"");
                         } else {
-                            $$ = T_LOGICO;
+                            $$.tipo = T_LOGICO;
                         }
+                        $$.desp = creaVarTemp();
+                        emite(EASIG,crArgEnt(1),crArgNul(), crArgPos(niv, $$.desp));
+                        emite($2, crArgPos(niv, $1.desp), crArgPos(niv, $2.desp), crArgEtq(si + 2));
+                        emite(EASIG,crArgEnt(0),crArgNul(), crArgPos(niv, $$.desp));
                   }
                   ;
 
@@ -328,20 +341,27 @@ expresionIgualdad : expresionRelacional {$$ = $1;}
 
 expresionRelacional : expresionAditiva {$$ = $1;}
                     | expresionRelacional operadorRelacional expresionAditiva {
-                        if($1 == T_ERROR || $3 == T_ERROR)
-                           $$.t = T_ERROR;
-                        else if(!($1 == T_ENTERO && $1 == $3)) {
-                           $$ = T_ERROR;
+                        if($1.tipo == T_ERROR || $3.tipo == T_ERROR)
+                           $$.tipo = T_ERROR;
+                        else if(!($1.tipo == T_ENTERO && $1.tipo == $3.tipo)) {
+                           $$.tipo = T_ERROR;
                            yyerror("Error en \"expresion relacional\"");
                         } else 
-                           $$ = T_LOGICO;
+                           $$.tipo = T_LOGICO;
+
+                        $$.desp = creaVarTemp();
+                        /*asumimos que es true la expresion, si se cumple saltamos, si no se cumple es false y por tanto 0 */
+                        emite(EASIG,crArgEnt(1),crArgNul(), crArgPos(niv, $$.desp));
+                        emite($2, crArgPos(niv, $1.desp), crArgPos(niv, $2.desp), crArgEtq(si + 2));
+                        emite(EASIG,crArgEnt(0),crArgNul(), crArgPos(niv, $$.desp));
+                        
                     }
                     ;
 
 /********************************************************************/
 
 expresionAditiva : expresionMultiplicativa  {$$ = $1;} 
-                 | expresionAditiva operadorAditivo expresionMultiplicativa {
+                 | expresionAditiva operadorAditivo  expresionMultiplicativa {
                         if($1.tipo == T_ERROR || $3.tipo == T_ERROR)
                             $$.tipo = T_ERROR;
                         else if($1.tipo != T_ENTERO || $3.tipo != T_ENTERO) {
@@ -350,8 +370,8 @@ expresionAditiva : expresionMultiplicativa  {$$ = $1;}
                         } else 
                             $$.tipo = T_ENTERO;
                         
-                        $$.d = creaVarTemp();
-                        emite($2, crArgPos(niv, $1.d), crArgPos(niv, $3.d), crArgPos(niv, $$.d));
+                        $$.desp = creaVarTemp();
+                        emite($2, crArgPos(niv, $1.desp), crArgPos(niv, $3.desp), crArgPos(niv, $$.desp));
                  }
                  ;
 
@@ -359,15 +379,17 @@ expresionAditiva : expresionMultiplicativa  {$$ = $1;}
 
 expresionMultiplicativa : expresionUnaria {$$ = $1;}
                         | expresionMultiplicativa operadorMultiplicativo expresionUnaria {
-                            if($1 == T_ERROR || $3 == T_ERROR)
-                              $$ = T_ERROR;
-                            else if($1 != T_ENTERO || $3 != T_ENTERO) {
-                              $$ = T_ERROR;
+                            if($1.tipo == T_ERROR || $3.tipo == T_ERROR)
+                              $$.tipo = T_ERROR;
+                            else if($1.tipo != T_ENTERO || $3.tipo != T_ENTERO) {
+                              $$.tipo = T_ERROR;
                               yyerror("Error en \"expresion multiplicativa\"");
                             }
                             else {
-                              $$ = T_ENTERO;
+                              $$.tipo = T_ENTERO;
                             }
+                            $$.desp = creaVarTemp();
+                            emite($2,crArgPos(niv, $1.desp), crArgPos(niv, $3.desp), crArgPos(niv, $$.desp));
                         }
                         ;
 
@@ -375,13 +397,13 @@ expresionMultiplicativa : expresionUnaria {$$ = $1;}
 
 expresionUnaria : expresionSufija {$$ = $1;}
                 | operadorUnario expresionUnaria {
-                    if($2 == T_ERROR)
-                        $$ = $2;
-                    else if($1 != $2) {
+                    if($2.tipo == T_ERROR)
+                        $$.tipo = $2.tipo;
+                    else if($1.tipo != $2.tipo) {
                         yyerror("Error en \"expresion unaria\"");
-                        $$ = T_ERROR;
+                        $$.tipo = T_ERROR;
                     }else
-                        $$ = $2;
+                        $$.tipo = $2;
                 }
                 ;
 
@@ -472,8 +494,8 @@ listaParametrosActuales : expresion {$$ = insTdD(-1, $1);}
 
 /********************************************************************/
 
-operadorLogico : AND_ {}
-               | OR_
+operadorLogico : AND_ {$$ = EMULT;}
+               | OR_ {$$ = ESUM;}
                ;
 
 /********************************************************************/
