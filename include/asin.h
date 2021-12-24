@@ -111,11 +111,15 @@ union YYSTYPE
       int talla; /*talla parametros */
    } ParamForm; /*estructura como ayuda para los parametros */
    struct {
-      int tipo;
-      int desp;
-   } exp;
+      int tipo; /*tipo de la expresion*/
+      int desp; /* desplazamiento en memoria */
+   } exp; /*expresiones */
+   struct {
+       int arg1; /*argumento de LANS*/
+       int arg2; /*argumento de LANS*/
+   } prog;
 
-#line 119 "asin.h"
+#line 123 "asin.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

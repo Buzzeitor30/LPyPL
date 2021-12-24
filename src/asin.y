@@ -28,9 +28,13 @@ extern int yylineno;
       int talla; /*talla parametros */
    } ParamForm; /*estructura como ayuda para los parametros */
    struct {
-      int tipo;
-      int desp;
-   } exp;
+      int tipo; /*tipo de la expresion*/
+      int desp; /* desplazamiento en memoria */
+   } exp; /*expresiones */
+   struct {
+       int arg1; /*argumento de LANS*/
+       int arg2; /*argumento de LANS*/
+   } prog;
 }
 /*PUNTO, COMA Y PUNTO Y COMA */
 %token PUNT_ COMA_ FINL_
@@ -46,6 +50,7 @@ extern int yylineno;
 %token TRUE_ FALSE_
 
 /*TOKENS CON ATRIBUTOS */
+/*PROGRAMA*/
 /*CONSTANTE E IDENTIFICADOR*/
 %token <ident> ID_ 
 %token <cent> CTE_
@@ -64,12 +69,28 @@ extern int yylineno;
 /* GRAMATICA COPIADA DIRECTAMENTE DEL BOLETÍN */
 %%
 
-programa :  {niv=0;dvar=0;si=0;cargaContexto(niv);} listaDeclaraciones {
+programa :  {
+        niv=0;
+        dvar=0;
+        si=0;
+        cargaContexto(niv);
+        /****Variables globales****/
+        $<prog>$.arg1 = creaLans(si);
+        emite(INCTOP,crArgNul(),crArgNul(),crArgEnt(-1)); /*variables globales, pero no sabemos aun cuantas tenemos*/
+        /****Salto a main******/
+        $<prog>$.arg2 = creaLans(si);
+        emite(GOTOS,crArgNul(),crArgNul(),crArgEtq(-1)); /*hay que saltar al main, pero no sabemos si tendra o donde esta*/
+} listaDeclaraciones {
+                SIMB main = obtTdS("main"); /*sacamos la funcion main*/
                 if($2 == 0)
                     yyerror("El programa no tiene \"main\"");
                 else if($2 > 1)
                     yyerror("El programa tiene mas de un \"main\"");
                 /* else todo ok :) */
+                /****Completar variables globales**/
+                completaLans($<prog>1.arg1, crArgEnt(dvar));
+                /*saltamos al main*/
+                completaLans($<prog>1.arg2, crArgEtq(main.d));
             };
 
 /********************************************************************/
@@ -144,7 +165,7 @@ listaCampos :   tipoSimple ID_ FINL_{
 declaracionFuncion  :   tipoSimple ID_
                         {$<cent>$ = dvar;dvar = 0;niv++;cargaContexto(niv);} 
                         APAR_ parametrosFormales CPAR_{
-                            if(!insTdS($2, FUNCION, $1, niv - 1, -1, $5))
+                            if(!insTdS($2, FUNCION, $1, niv - 1, si, $5))
                                 yyerror("Identificador de función repetido");
                             if(strcmp($2, "main") == 0)
                                 $<cent>$ = 1;
@@ -156,7 +177,8 @@ declaracionFuncion  :   tipoSimple ID_
                                 mostrarTdS();
                             descargaContexto(niv);niv--;
                             dvar = $<cent>3;
-                            $$ =  $<cent>7;  
+                            $$ =  $<cent>7;
+
                         }
                    ;
 
@@ -186,14 +208,37 @@ listaParametrosFormales :   tipoSimple ID_{
 
 /********************************************************************/
 
-bloque  : ABLOQ_ declaracionVariableLocal listaInstrucciones 
-         RETURN_ expresion {
-		INF func = obtTdD(-1);
-		if(func.tipo == T_ERROR) {
-            yyerror("Error en declaracion de funcion");
-		}
-		else if($5.tipo != T_ERROR && func.tipo != $5.tipo)
-			yyerror("Error de tipos del \"return\"");}
+bloque  :  {
+            emite(PUSHFP,crArgNul(),crArgNul(),crArgNul()); /* apilamos fp en la pila */
+            emite(TOPFP,crArgNul(),crArgNul(),crArgNul()); /* movemos fp arriba del todo de la pila */
+            /*variables locales y temporales*/
+            $<cent>$ = creaLans(si); /*cuantas variables temporales y vocales hay */
+            emite(INCTOP,crArgNul(),crArgNul(),crArgEnt(-1));
+}   ABLOQ_ declaracionVariableLocal listaInstrucciones 
+    RETURN_ expresion {
+            INF func = obtTdD(-1);
+            /* espacio para las variables reservado OK */
+            completaLans($<cent>1,crArgEnt(dvar));
+            /* valor retorno,mirar el tema 5, basicamente es la funcion que hay en la diapo 5*/
+            int accvalret = - (TALLA_SEGENLACES + func.tsp + TALLA_TIPO_SIMPLE);
+            emite(EASIG,crArgPos(niv, $6.desp),crArgNul(),crArgPos(niv,accvalret));
+            /*liberar segmento de variables locales y temporales */
+            emite(TOPFP, crArgNul(),crArgNul(),crArgEnt(dvar)); /*desapilamos variables temporales y locales*/
+            /*desapilar enlaces de control*/
+            emite(FPPOP,crArgNul(),crArgNul(),crArgNul());
+
+            if(func.tipo == T_ERROR) {
+                yyerror("Error en declaracion de funcion");
+            }
+            else if($6.tipo != T_ERROR && func.tipo != $6.tipo)
+                yyerror("Error de tipos del \"return\"");
+
+            if(strcmp(func.nom,"main") == 0)
+                emite(FIN,crArgNul(),crArgNul(),crArgNul()); /* fin del programa */
+            else
+                emite(RETURN,crArgNuL(),crArgNul(),crArgNul()); /*return de una funcion */
+            }
+            
 	 FINL_ CBLOQ_
 
 /********************************************************************/
@@ -276,22 +321,45 @@ instruccionEntradaSalida : READ_ APAR_ ID_ CPAR_ FINL_{
                             } else if(sym.t != T_ENTERO) {
                                 yyerror("El argumento de \"read\" debe ser \"entero\"");
                             }
+                            emite(EREAD,crArgNul(),crArgNul(),crArgPos(sym.n, sym.d));
                         }
                          | PRINT_ APAR_ expresion CPAR_ FINL_ {
                            if($3.tipo != T_ENTERO) {
                               yyerror("La expresion del \"print\" debe ser entera");
                            }
+                           emite(EWRITE,crArgNul(),crArgNul(),crArgPos(niv, $3.desp));
                          }
                          ;
 
 /********************************************************************/
 
-instruccionSeleccion : IF_ APAR_ expresion {if($3.tipo != T_LOGICO && $3.tipo != T_ERROR)yyerror("La expresion del \"if\" debe ser \"logico\"");} CPAR_ instruccion ELSE_ instruccion
+instruccionSeleccion : IF_ APAR_ expresion CPAR_{
+                        if($3.tipo != T_LOGICO && $3.tipo != T_ERROR)
+                            yyerror("La expresion del \"if\" debe ser \"logico\"");
+                        $<cent>$ = creaLans(si); /*creamos la LANS*/
+                        emite(EIGUAL,crArgEnt(0), crArgPos(niv,$3.desp), crArgEtq(-1)); /*-1 para rellenar */
+                        }
+                        instruccion {
+                            $<cent>$ = creaLans(si);
+                            emite(GOTOS,crArgNul(),crArgNul(),crArgEtq(-1)); /*-1 para rellenar*/
+                            completaLans($<cent>5, crArgEtq(si)); /*saltamos en caso de ELSE */
+                        }
+                        ELSE_ instruccion {
+                            completaLans($<cent>7, crArgEtq(si)); /*donde saltamos al final y despues del IF*/
+                        }
                      ;
 
 /********************************************************************/
 
-instruccionIteracion : WHILE_ APAR_ expresion{if($3.tipo != T_LOGICO && $3.tipo != T_ERROR)yyerror("La expresion del \"while\" debe ser \"logico\"");} CPAR_ instruccion
+instruccionIteracion : WHILE_ { $<cent>$ = si; /*direccion de expresion*/} APAR_ expresion {
+                        if($4.tipo != T_LOGICO && $4.tipo != T_ERROR)
+                            yyerror("La expresion del \"while\" debe ser \"logico\"");
+                        $<cent>$ = creaLans(si); /*nos guardamos la dir. del emite */
+                        emite(EIGUAL,crArgEnt(0),crArgPos(niv,$4.desp),crArgEtq(-1)); /*-1 ara rellenar*/
+                        } CPAR_ instruccion {
+                        emite(GOTOS,crArgNul(),crArgNul(),crArgEtq($<cent>2)); /*saltamos al inicio del bucle */
+                        completaLans($<cent>5,crArgEtq(si));/*completa la lista, tiene que saltar fuera */
+                        }
                      ;
 
 /********************************************************************/
@@ -332,7 +400,7 @@ expresionIgualdad : expresionRelacional {$$ = $1;}
                         }
                         $$.desp = creaVarTemp();
                         emite(EASIG,crArgEnt(1),crArgNul(), crArgPos(niv, $$.desp));
-                        /*emite($2, crArgPos(niv, $1.desp), crArgPos(niv, $2.desp), crArgEtq(si + 2));*/
+                        emite($2, crArgPos(niv, $1.desp), crArgPos(niv, $3.desp), crArgEtq(si + 2));
                         emite(EASIG,crArgEnt(0),crArgNul(), crArgPos(niv, $$.desp));
                   }
                   ;
@@ -352,7 +420,7 @@ expresionRelacional : expresionAditiva {$$ = $1;}
                         $$.desp = creaVarTemp();
                         /*asumimos que es true la expresion, si se cumple saltamos, si no se cumple es false y por tanto 0 */
                         emite(EASIG,crArgEnt(1),crArgNul(), crArgPos(niv, $$.desp));
-                        /*emite($2, crArgPos(niv, $1.desp), crArgPos(niv, $2.desp), crArgEtq(si + 2));*/
+                        emite($2, crArgPos(niv, $1.desp), crArgPos(niv, $3.desp), crArgEtq(si + 2));
                         emite(EASIG,crArgEnt(0),crArgNul(), crArgPos(niv, $$.desp));                        
                     }
                     ;
@@ -408,13 +476,10 @@ expresionUnaria : expresionSufija {$$ = $1;}
 /********************************************************************/
 
 expresionSufija : constante {
-                    $$.tipo = $1.desp;
-                    $$.desp = creaVarTemp();
-                    emite(EASIG,crArgEnt($1.desp),crArgNul(),crArgPos(niv,$$.desp));
+                    $$ = $1;
                 }
                 | APAR_ expresion CPAR_ {
-                    $$.tipo = $2.tipo;
-                    $$.desp = $2.desp;
+                    $$ = $2;
                 }
                 | ID_ {
                     SIMB sym = obtTdS($1);
@@ -489,9 +554,9 @@ expresionSufija : constante {
 
 /********************************************************************/
 
-constante : CTE_ {$$.tipo = T_ENTERO; $$.desp=$1;}
-          | TRUE_ {$$.tipo = T_LOGICO; $$.desp=1;}
-          | FALSE_ {$$.tipo = T_LOGICO; $$.desp=0;}
+constante : CTE_ {$$.tipo = T_ENTERO; $$.desp=creaVarTemp();emite(EASIG,crArgEnt($1),crArgNul(),crArgPos(niv,$$.desp));}
+          | TRUE_ {$$.tipo = T_LOGICO; $$.desp=creaVarTemp();emite(EASIG,crArgEnt(1),crArgNul(),crArgPos(niv,$$.desp));}
+          | FALSE_ {$$.tipo = T_LOGICO; $$.desp=creaVarTemp();emite(EASIG,crArgEnt(0),crArgNul(),crArgPos(niv,$$.desp));}
           ;
 
 /********************************************************************/
