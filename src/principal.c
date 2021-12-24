@@ -34,7 +34,7 @@ int main (int argc, char **argv)
     else {        
       if (verbosidad == TRUE) fprintf(stdout,"%3d.- ", yylineno);
       nom_fich = argv[n];
-      yyparse ();
+      yyparse();
       if (numErrores == 0)  volcarCodigo(nom_fich);
       else fprintf(stderr,"\nNumero de errores:      %d\n", numErrores);
     }   

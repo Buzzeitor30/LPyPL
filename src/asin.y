@@ -236,7 +236,7 @@ bloque  :  {
             if(strcmp(func.nom,"main") == 0)
                 emite(FIN,crArgNul(),crArgNul(),crArgNul()); /* fin del programa */
             else
-                emite(RETURN,crArgNuL(),crArgNul(),crArgNul()); /*return de una funcion */
+                emite(RET,crArgNul(),crArgNul(),crArgNul()); /*return de una funcion */
             }
             
 	 FINL_ CBLOQ_
@@ -272,17 +272,18 @@ instruccionAsignacion : ID_ ASIG_ expresion FINL_{
                             } else if(sym.t != $3.tipo && $3.tipo != T_ERROR)
                             yyerror("Error de tipos en la \"asignacion\"");
                             }
+                        emite(EASIG,crArgPos(niv,$3.desp),crArgNul(),crArgPos(sym.n,sym.d)); /*asignacion */
                         }
                       | ID_ AIND_ expresion CIND_ ASIG_ expresion FINL_{
                             /* Sacamos simbolo e informacion del array dado el simbolo*/
                             SIMB sym = obtTdS($1);
+                            DIM dim = obtTdA(sym.ref);
                             if ($3.tipo != T_ERROR && $6.tipo != T_ERROR) {
                                 if(sym.t == T_ERROR) {
                                     yyerror("Objeto no declarado");
                                 }else if(sym.t != T_ARRAY) { /* Tenemos que tratar con un array */
                                     yyerror("El identificador debe ser de tipo \"array\"");
                                 } else {
-                                    DIM dim = obtTdA(sym.ref);
                                     if($3.tipo != T_ENTERO) { /* Se accede a los indicies con enteros */
                                         yyerror("El índice del \"array\" debe ser entero");
                                     } 
@@ -291,23 +292,24 @@ instruccionAsignacion : ID_ ASIG_ expresion FINL_{
                                     } 
                                 }
                             }
+                            emite(EVA,crArgPos(sym.n,sym.d),crArgPos(niv,$3.desp),crArgPos(niv,$6.desp));
                         }
                       | ID_ PUNT_ ID_ ASIG_ expresion FINL_ {
                             SIMB sym = obtTdS($1);
+                            CAMP camp = obtTdR(sym.ref, $3);
                             if($5.tipo != T_ERROR) {
                                 if(sym.t == T_ERROR)
                                     yyerror("Objeto no declarado");
                                 else if(sym.t != T_RECORD)
                                     yyerror("El identificador debe ser de tipo \"struct\"");
                                 else {
-                                    CAMP camp = obtTdR(sym.ref, $3);
                                     if(camp.t == T_ERROR)
                                     	yyerror("Campo no declarado");
                                     else if(camp.t != $5.tipo)
                                         yyerror("Error de tipos en la \"asignacion\"");
-
                                 }
-                                
+                                int d = sym.d + camp.d; /*sumamos desplazamientos*/
+                                emite(EASIG,crArgPos(niv,$5.desp),crArgNul(),crArgPos(sym.n,d));
                             }
                       }
                       ;
@@ -533,21 +535,31 @@ expresionSufija : constante {
                     $$.desp = creaVarTemp();
                     emite(EAV, crArgPos(sym.n,sym.d), crArgPos(niv, $3.desp), crArgPos(niv, $$.desp));
                 }
-                | ID_ APAR_ parametrosActuales CPAR_ {
+                | ID_ { 
+                    /***reservar espacio para el valor de retorno**/
+                    emite(INCTOP,crArgNul(),crArgNul(),crArgEnt(TALLA_TIPO_SIMPLE));
+                    }
+                APAR_ parametrosActuales CPAR_ {
                     SIMB sym = obtTdS($1);
+                    INF inf = obtTdD(sym.ref);
                     $$.tipo = T_ERROR; /* si no llega hasta el ultimo else se queda esto */
                     if(sym.t == T_ERROR)
                         yyerror("Objeto no declarado");
-                    else {
-                        INF inf = obtTdD(sym.ref);
+                    else {   
                         if (inf.tipo == T_ERROR) 
                             yyerror("El identificador no es una funcion");
-                        else if (cmpDom(sym.ref, $3) == 0 )
+                        else if (cmpDom(sym.ref, $4) == 0)
                             yyerror("El dominio de los parametros actuales no coincide con el de la funcion");
                         else
                             $$.tipo = inf.tipo;
                     }
-                    
+                    $$.desp = creaVarTemp();
+                    /**llamada a la funcion**/
+                    emite(CALL, crArgNul(), crArgNul(), crArgEtq(sym.d));
+                    /** desapilar segmento de parametros**/
+                    emite(DECTOP,crArgNul(),crArgNul(),crArgEnt(inf.tsp));
+                    /**desapilar y asignar valor de retorno*/
+                    emite(EPOP,crArgNul(),crArgNul(),crArgPos(niv, $$.desp));
 
                 }
                 ;
