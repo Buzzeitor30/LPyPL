@@ -471,26 +471,33 @@ expresionUnaria : expresionSufija {$$ = $1;}
                         $$.tipo = $2.tipo;
 
                     // Revisar este tratamiento del error
-                    else if($1 != $2.tipo) {
+                    else if( ( ($1 == EASIG || $1 == ESIG) && $2.tipo != T_ENTERO) || ($1 == EDIF && $2.tipo!=T_LOGICO) )
+                        {
                         yyerror("Error en \"expresion unaria\"");
                         $$.tipo = T_ERROR;
                     }else {
                         $$.tipo = $2.tipo;
                     }
 
+
                     $$.desp = creaVarTemp();
+
                     switch($1)
                     {
-                        case T_ENTERO:
+                        case EASIG:
+                            // Se mantiene igual
+                            emite($1, crArgPos(niv, $2.desp), crArgNul(), crArgPos(niv, $$.desp));
+                            break;
+
+                        case ESIG:
                             // Cambio de signo MENOS
                             emite($1, crArgPos(niv, $2.desp), crArgNul(), crArgPos(niv, $$.desp));
                             break;
                         
-                        case T_LOGICO:
+                        case EDIF:
                             // Negación logica x=1-x
-                            emite($1, crArgEnt(1), crArgPos(niv, $2.desp), crArgPos(niv, $$.desp))
-                            break:
-
+                            emite($1, crArgEnt(1), crArgPos(niv, $2.desp), crArgPos(niv, $$.desp));
+                            break;
                     }
 
                 }
@@ -640,8 +647,8 @@ operadorMultiplicativo : POR_ {$$ = EMULT;}
 
 /********************************************************************/
 
-operadorUnario : MAS_ {$$ = T_ENTERO;}
-               | MENOS_ {$$ = T_ENTERO;}
-               | NOT_ {$$ = T_LOGICO;}
+operadorUnario : MAS_ {$$ = EASIG;}
+               | MENOS_ {$$ = ESIG;}
+               | NOT_ {$$ = EDIF;}
 
 %%
