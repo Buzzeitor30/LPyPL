@@ -457,7 +457,9 @@ expresionMultiplicativa : expresionUnaria {$$ = $1;}
                             else {
                               $$.tipo = T_ENTERO;
                             }
-
+                        
+                            $$.desp = creaVarTemp();
+                            emite($2, crArgPos(niv, $1.desp), crArgPos(niv, $3.desp), crArgPos(niv, $$.desp));
                         }
                         ;
 
@@ -467,11 +469,30 @@ expresionUnaria : expresionSufija {$$ = $1;}
                 | operadorUnario expresionUnaria {
                     if($2.tipo == T_ERROR)
                         $$.tipo = $2.tipo;
+
+                    // Revisar este tratamiento del error
                     else if($1 != $2.tipo) {
                         yyerror("Error en \"expresion unaria\"");
                         $$.tipo = T_ERROR;
-                    }else
+                    }else {
                         $$.tipo = $2.tipo;
+                    }
+
+                    $$.desp = creaVarTemp();
+                    switch($1)
+                    {
+                        case T_ENTERO:
+                            // Cambio de signo MENOS
+                            emite($1, crArgPos(niv, $2.desp), crArgNul(), crArgPos(niv, $$.desp));
+                            break;
+                        
+                        case T_LOGICO:
+                            // Negación logica x=1-x
+                            emite($1, crArgEnt(1), crArgPos(niv, $2.desp), crArgPos(niv, $$.desp))
+                            break:
+
+                    }
+
                 }
                 ;
 
