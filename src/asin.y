@@ -210,7 +210,7 @@ listaParametrosFormales :   tipoSimple ID_{
 
 bloque  :  {
             emite(PUSHFP,crArgNul(),crArgNul(),crArgNul()); /* apilamos fp en la pila */
-            emite(TOPFP,crArgNul(),crArgNul(),crArgNul()); /* movemos fp arriba del todo de la pila */
+            emite(FPTOP,crArgNul(),crArgNul(),crArgNul()); /* movemos fp arriba del todo de la pila */
             /*variables locales y temporales*/
             $<cent>$ = creaLans(si); /*cuantas variables temporales y vocales hay */
             emite(INCTOP,crArgNul(),crArgNul(),crArgEnt(-1));
@@ -220,8 +220,8 @@ bloque  :  {
             /* espacio para las variables reservado OK */
             completaLans($<cent>1,crArgEnt(dvar));
             /* valor retorno,mirar el tema 5, basicamente es la funcion que hay en la diapo 5*/
-            int accvalret = - (TALLA_SEGENLACES + func.tsp + TALLA_TIPO_SIMPLE);
-            emite(EASIG,crArgPos(niv, $6.desp),crArgNul(),crArgPos(niv,accvalret));
+            int accvalret = TALLA_SEGENLACES + func.tsp + TALLA_TIPO_SIMPLE;
+            emite(EASIG,crArgPos(niv, $6.desp),crArgNul(),crArgPos(niv,-accvalret));
             /*liberar segmento de variables locales y temporales */
             emite(TOPFP, crArgNul(),crArgNul(),crArgEnt(dvar)); /*desapilamos variables temporales y locales*/
             /*desapilar enlaces de control*/
@@ -304,7 +304,7 @@ instruccionAsignacion : ID_ ASIG_ expresion FINL_{
                                     yyerror("El identificador debe ser de tipo \"struct\"");
                                 else {
                                     if(camp.t == T_ERROR)
-                                    	yyerror("Campo no declarado");
+                                        yyerror("Campo no declarado");
                                     else if(camp.t != $5.tipo)
                                         yyerror("Error de tipos en la \"asignacion\"");
                                 }
@@ -380,7 +380,7 @@ expresion : expresionIgualdad {$$ = $1;}
                 $$.desp = creaVarTemp();
                 emite($2, crArgPos(niv, $1.desp), crArgPos(niv, $3.desp), crArgPos(niv, $$.desp));
                 if($2 == ESUM) {
-                    /* if $$ <= 1 then goto si + 2 (diapositivas) */
+                    /* si: if $$ <= 1 then goto si + 2 (diapositivas) */
                     emite(EMENEQ, crArgPos(niv, $$.desp), crArgEnt(1), crArgEtq(si + 2));
                     /*asignacion por si la suma da mayor que uno */
                     emite(EASIG, crArgEnt(1), crArgNul(), crArgPos(niv, $$.desp));
@@ -539,9 +539,11 @@ expresionSufija : constante {
                             $$.tipo = camp.t;
                         }
                     }
+                    // d = dirbase_var + desp_rel_campo
+                    // d = 200 + 1 = 201
                     int d = sym.d + camp.d;
                     $$.desp = creaVarTemp();
-                    emite(EASIG,crArgEnt(d), crArgNul(), crArgPos(niv, $$.desp));
+                    emite(EASIG,crArgPos(sym.n,d), crArgNul(), crArgPos(niv, $$.desp));
                     
                 }
                 | ID_ AIND_ expresion CIND_ {
@@ -561,6 +563,7 @@ expresionSufija : constante {
                     }
                     /* no hace falta la primera instruccion del temario, la talla de todos los tipos es 1 */
                     $$.desp = creaVarTemp();
+                    /* boletin */
                     emite(EAV, crArgPos(sym.n,sym.d), crArgPos(niv, $3.desp), crArgPos(niv, $$.desp));
                 }
                 | ID_ { 
@@ -588,7 +591,6 @@ expresionSufija : constante {
                     emite(DECTOP,crArgNul(),crArgNul(),crArgEnt(inf.tsp));
                     /**desapilar y asignar valor de retorno*/
                     emite(EPOP,crArgNul(),crArgNul(),crArgPos(niv, $$.desp));
-
                 }
                 ;
 
@@ -607,15 +609,17 @@ parametrosActuales : {$$ = insTdD(-1, T_VACIO);} /* funcion sin parametros */
 
 /********************************************************************/
 
-listaParametrosActuales : expresion {$$ = insTdD(-1, $1.tipo);}
-                        | expresion COMA_ listaParametrosActuales {
-                            $$ = insTdD($3, $1.tipo); 
+listaParametrosActuales : expresion {$$ = insTdD(-1, $1.tipo); emite(EPUSH,crArgNul(),crArgNul(),crArgPos(niv,$1.desp));}
+                        | expresion  {
+                            emite(EPUSH,crArgNul(),crArgNul(),crArgPos(niv,$1.desp));
+                        }COMA_ listaParametrosActuales {
+                            $$ = insTdD($4, $1.tipo);
                         }
                         ;
 
 /********************************************************************/
 
-operadorLogico : AND_ {$$ = EMULT;}
+operadorLogico : AND_ {$$ = EMULT;} 
                | OR_ {$$ = ESUM;}
                ;
 

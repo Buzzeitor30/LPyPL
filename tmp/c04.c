@@ -5,9 +5,8 @@ int a[10];
 
 bool inicializa (int x)
 { int i;
-
   i = 0;
-  while (i < x) { a[i] = i; i = i+1; }
+  while (i < x) { a[i] = i; i = i+1;print(a[i]);}
 
   return true;
 }
@@ -36,7 +35,7 @@ int main()
     if (((x>=0) && (x<10)) && ((y>=0) && (y<10))) ok = true;
     else {}
   }
-  
+
   print( division(suma(a[x], y), 2));
   
   return 0;
