@@ -233,10 +233,7 @@ bloque  :  {
             else if($6.tipo != T_ERROR && func.tipo != $6.tipo)
                 yyerror("Error de tipos del \"return\"");
 
-            if(strcmp(func.nom,"main") == 0)
-                emite(FIN,crArgNul(),crArgNul(),crArgNul()); /* fin del programa */
-            else
-                emite(RET,crArgNul(),crArgNul(),crArgNul()); /*return de una funcion */
+            emite(RET,crArgNul(),crArgNul(),crArgNul()); /*return de una funcion */
             }
             
 	 FINL_ CBLOQ_
@@ -277,39 +274,42 @@ instruccionAsignacion : ID_ ASIG_ expresion FINL_{
                       | ID_ AIND_ expresion CIND_ ASIG_ expresion FINL_{
                             /* Sacamos simbolo e informacion del array dado el simbolo*/
                             SIMB sym = obtTdS($1);
-                            DIM dim = obtTdA(sym.ref);
+                            
                             if ($3.tipo != T_ERROR && $6.tipo != T_ERROR) {
                                 if(sym.t == T_ERROR) {
                                     yyerror("Objeto no declarado");
                                 }else if(sym.t != T_ARRAY) { /* Tenemos que tratar con un array */
                                     yyerror("El identificador debe ser de tipo \"array\"");
                                 } else {
+                                    DIM dim = obtTdA(sym.ref);
                                     if($3.tipo != T_ENTERO) { /* Se accede a los indicies con enteros */
                                         yyerror("El índice del \"array\" debe ser entero");
                                     } 
                                     else if($6.tipo != dim.telem) { /* La asignacion no coincide con el tipo del array */
                                         yyerror("Error de tipos en la \"asignacion\"");
-                                    } 
+                                    }
+                                    emite(EVA,crArgPos(sym.n,sym.d),crArgPos(niv,$3.desp),crArgPos(niv,$6.desp));
                                 }
                             }
-                            emite(EVA,crArgPos(sym.n,sym.d),crArgPos(niv,$3.desp),crArgPos(niv,$6.desp));
+                            
                         }
                       | ID_ PUNT_ ID_ ASIG_ expresion FINL_ {
                             SIMB sym = obtTdS($1);
-                            CAMP camp = obtTdR(sym.ref, $3);
+
                             if($5.tipo != T_ERROR) {
                                 if(sym.t == T_ERROR)
                                     yyerror("Objeto no declarado");
                                 else if(sym.t != T_RECORD)
                                     yyerror("El identificador debe ser de tipo \"struct\"");
                                 else {
+                                    CAMP camp = obtTdR(sym.ref, $3);
                                     if(camp.t == T_ERROR)
                                         yyerror("Campo no declarado");
                                     else if(camp.t != $5.tipo)
                                         yyerror("Error de tipos en la \"asignacion\"");
+                                    int d = sym.d + camp.d; /*sumamos desplazamientos*/
+                                    emite(EASIG,crArgPos(niv,$5.desp),crArgNul(),crArgPos(sym.n,d));
                                 }
-                                int d = sym.d + camp.d; /*sumamos desplazamientos*/
-                                emite(EASIG,crArgPos(niv,$5.desp),crArgNul(),crArgPos(sym.n,d));
                             }
                       }
                       ;
@@ -523,7 +523,7 @@ expresionSufija : constante {
                   }
                 | ID_ PUNT_ ID_ {
                     SIMB sym = obtTdS($1);
-                    CAMP camp = obtTdR(sym.ref, $3);
+                    
                     /*¿ERROR?*/
                     if(sym.t == T_ERROR) {
                         yyerror("Objeto no declarado");
@@ -532,23 +532,25 @@ expresionSufija : constante {
                         yyerror("El identificador debe ser de tipo \"struct\"");
                         $$.tipo = T_ERROR;
                     } else {
+                        CAMP camp = obtTdR(sym.ref, $3);
                         if (camp.t == T_ERROR) { /*¿Campo declarado?*/
                             yyerror("Campo no declarado");
                             $$.tipo = T_ERROR;
                         } else {
                             $$.tipo = camp.t;
                         }
+                        // d = dirbase_var + desp_rel_campo
+                        // d = 200 + 1 = 201
+                        int d = sym.d + camp.d;
+                        $$.desp = creaVarTemp();
+                        emite(EASIG,crArgPos(sym.n,d), crArgNul(), crArgPos(niv, $$.desp));
                     }
-                    // d = dirbase_var + desp_rel_campo
-                    // d = 200 + 1 = 201
-                    int d = sym.d + camp.d;
-                    $$.desp = creaVarTemp();
-                    emite(EASIG,crArgPos(sym.n,d), crArgNul(), crArgPos(niv, $$.desp));
+
                     
                 }
                 | ID_ AIND_ expresion CIND_ {
                     SIMB sym = obtTdS($1);
-                    DIM dim = obtTdA(sym.ref);
+                    
                     if(sym.t == T_ERROR) { /*¿Error? */
                         yyerror("Objeto no declarado");
                         $$.tipo = T_ERROR;
@@ -559,12 +561,14 @@ expresionSufija : constante {
                         yyerror("El indice del \"array\" debe ser entero");
                         $$.tipo = T_ERROR;
                     }  else {
+                        DIM dim = obtTdA(sym.ref);
                         $$.tipo = dim.telem;
+                        /* no hace falta la primera instruccion del temario, la talla de todos los tipos es 1 */
+                        $$.desp = creaVarTemp();
+                        /* boletin */
+                        emite(EAV, crArgPos(sym.n,sym.d), crArgPos(niv, $3.desp), crArgPos(niv, $$.desp));
                     }
-                    /* no hace falta la primera instruccion del temario, la talla de todos los tipos es 1 */
-                    $$.desp = creaVarTemp();
-                    /* boletin */
-                    emite(EAV, crArgPos(sym.n,sym.d), crArgPos(niv, $3.desp), crArgPos(niv, $$.desp));
+
                 }
                 | ID_ { 
                     /***reservar espacio para el valor de retorno**/
@@ -572,25 +576,27 @@ expresionSufija : constante {
                     }
                 APAR_ parametrosActuales CPAR_ {
                     SIMB sym = obtTdS($1);
-                    INF inf = obtTdD(sym.ref);
+                    
                     $$.tipo = T_ERROR; /* si no llega hasta el ultimo else se queda esto */
                     if(sym.t == T_ERROR)
                         yyerror("Objeto no declarado");
-                    else {   
+                    else {
+                        INF inf = obtTdD(sym.ref);   
                         if (inf.tipo == T_ERROR) 
                             yyerror("El identificador no es una funcion");
                         else if (cmpDom(sym.ref, $4) == 0)
                             yyerror("El dominio de los parametros actuales no coincide con el de la funcion");
                         else
                             $$.tipo = inf.tipo;
+                        $$.desp = creaVarTemp();
+                        /**llamada a la funcion**/
+                        emite(CALL, crArgNul(), crArgNul(), crArgEtq(sym.d));
+                        /** desapilar segmento de parametros**/
+                        emite(DECTOP,crArgNul(),crArgNul(),crArgEnt(inf.tsp));
+                        /**desapilar y asignar valor de retorno*/
+                        emite(EPOP,crArgNul(),crArgNul(),crArgPos(niv, $$.desp));
                     }
-                    $$.desp = creaVarTemp();
-                    /**llamada a la funcion**/
-                    emite(CALL, crArgNul(), crArgNul(), crArgEtq(sym.d));
-                    /** desapilar segmento de parametros**/
-                    emite(DECTOP,crArgNul(),crArgNul(),crArgEnt(inf.tsp));
-                    /**desapilar y asignar valor de retorno*/
-                    emite(EPOP,crArgNul(),crArgNul(),crArgPos(niv, $$.desp));
+
                 }
                 ;
 
