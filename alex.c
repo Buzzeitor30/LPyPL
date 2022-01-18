@@ -1,6 +1,6 @@
-#line 1 "alex.c"
+#line 2 "alex.c"
 
-#line 3 "alex.c"
+#line 4 "alex.c"
 
 #define  YY_INT_ALIGNED short int
 
@@ -536,7 +536,7 @@ char *yytext;
 #include "asin.h"
 
 #define  retornar(x) {if (verbosidad)  ECHO; return x;}
-#line 539 "alex.c"
+#line 540 "alex.c"
 /* Evitar "warnings" innecesarios */
 #define YY_NO_INPUT 1
 /* Guardar numero de linea */
@@ -545,7 +545,7 @@ char *yytext;
 /*Una constante es o un entero o un real */
 /*Los identificadores pueden empezar por mayusucula o minuscula, y luego pueden venir digitos, letras
 y el símbolo "-"" */
-#line 548 "alex.c"
+#line 549 "alex.c"
 
 #define INITIAL 0
 
@@ -762,7 +762,7 @@ YY_DECL
 	{
 #line 37 "src/alex.l"
 
-#line 765 "alex.c"
+#line 766 "alex.c"
 
 	while ( /*CONSTCOND*/1 )		/* loops until end-of-file is reached */
 		{
@@ -1040,7 +1040,7 @@ YY_RULE_SETUP
 #line 83 "src/alex.l"
 ECHO;
 	YY_BREAK
-#line 1043 "alex.c"
+#line 1044 "alex.c"
 
 	case YY_END_OF_BUFFER:
 		{

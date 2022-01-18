@@ -232,8 +232,11 @@ bloque  :  {
             }
             else if($6.tipo != T_ERROR && func.tipo != $6.tipo)
                 yyerror("Error de tipos del \"return\"");
-
-            emite(RET,crArgNul(),crArgNul(),crArgNul()); /*return de una funcion */
+                
+            if(strcmp(func.nom, "main") == 0) 
+		emite(FIN,crArgNul(),crArgNul(),crArgNul()); /*return de una funcion */
+	    else
+            	emite(RET,crArgNul(),crArgNul(),crArgNul()); /*return de una funcion */
             }
             
 	 FINL_ CBLOQ_
@@ -550,7 +553,7 @@ expresionSufija : constante {
                 }
                 | ID_ AIND_ expresion CIND_ {
                     SIMB sym = obtTdS($1);
-                    
+                    DIM dim = obtTdA(sym.ref);
                     if(sym.t == T_ERROR) { /*¿Error? */
                         yyerror("Objeto no declarado");
                         $$.tipo = T_ERROR;
@@ -561,13 +564,14 @@ expresionSufija : constante {
                         yyerror("El indice del \"array\" debe ser entero");
                         $$.tipo = T_ERROR;
                     }  else {
-                        DIM dim = obtTdA(sym.ref);
+                        
                         $$.tipo = dim.telem;
-                        /* no hace falta la primera instruccion del temario, la talla de todos los tipos es 1 */
+  
+                    }
+                  	/* no hace falta la primera instruccion del temario, la talla de todos los tipos es 1 */
                         $$.desp = creaVarTemp();
                         /* boletin */
                         emite(EAV, crArgPos(sym.n,sym.d), crArgPos(niv, $3.desp), crArgPos(niv, $$.desp));
-                    }
 
                 }
                 | ID_ { 
