@@ -6,7 +6,7 @@ int a[10];
 bool inicializa (int x)
 { int i;
   i = 0;
-  while (i < x) { a[i] = i; i = i+1;print(a[i]);}
+  while (i < x) { a[i] = i; i = i+1;print(a[i-1]);}
 
   return true;
 }
